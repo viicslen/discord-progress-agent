@@ -24,8 +24,8 @@ import (
 
 var (
 	numActiveDisplays = screenshot.NumActiveDisplays
-	getDisplayBounds = screenshot.GetDisplayBounds
-	captureRect      = screenshot.CaptureRect
+	getDisplayBounds  = screenshot.GetDisplayBounds
+	captureRect       = screenshot.CaptureRect
 )
 
 // All captures the screen(s) to dir. It is wired into the engine as
