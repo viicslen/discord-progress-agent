@@ -1,0 +1,4 @@
+/session-agent
+/session-agent-*
+*.tmp
+/dist/
