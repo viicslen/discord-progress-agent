@@ -1,4 +1,6 @@
 /.direnv
+/agent
+/result
 /session-agent
 /session-agent-*
 *.tmp
