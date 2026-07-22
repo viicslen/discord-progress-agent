@@ -9,16 +9,16 @@ warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
 
 ## Design at a glance
 
-- **Compile-time config, no runtime settings file.** Per-worker values (name,
-  intervals, thresholds, GitHub token, encryption key) are baked into the binary
-  with `-ldflags -X`. A worker cannot change intervals or rename themselves
-  without recompiling. Build one binary per worker — stricter (shorter intervals)
-  for less-trusted workers, looser for the rest. See `build.sh`.
-- **Webhook configured at runtime.** The Discord webhook URL is *not* baked in.
-  The app asks for it on first launch and it can be changed from the tray
-  ("Change webhook…"). It is stored encrypted in the sealed state, so it is not
-  plaintext-editable and survives restarts. Until one is set, activity keeps
-  queuing locally.
+- **Tunables baked in, identity configured at runtime.** Intervals, thresholds,
+  and the GitHub token are baked with `-ldflags -X` (no runtime config file — a
+  worker can't loosen their own intervals). The **webhook URL** and **worker
+  name** are configured at runtime instead: asked for / defaulted on first launch
+  and changeable from the tray ("Change webhook…", "Change name…"), stored
+  encrypted in sealed state.
+- **Two build flavors.** *Generic* release binaries (from CI, one per OS) bake
+  nothing per-worker — they provision a per-machine AES key on first run. *Per-
+  worker* binaries from `build.sh` bake a stable AES key for a stronger tamper
+  model. See **Build & release** below.
 - **Tamper-resistant local files.** Session state and the offline queue are
   sealed with **AES-GCM**: not human-readable, and any edit fails the auth tag,
   so casual "open the file and change the log" is impossible. Each item carries a
@@ -31,22 +31,38 @@ warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
   encrypted queue and drain to the webhook when online, in order, surviving
   restarts.
 
-## Build (per worker)
+## Build & release
+
+### Generic release binaries (CI)
+
+Push a version tag and GitHub Actions (`.github/workflows/release.yml`) builds a
+binary for Linux, macOS, and Windows and attaches them to a GitHub Release:
 
 ```bash
-WORKER_NAME="Alice" ./build.sh
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
-The webhook is entered at runtime (first launch), not here. Optional overrides
-(else the bot's defaults apply): `CHECKIN_BASE_MIN`,
-`CHECKIN_JITTER_MIN`, `SHOT_BASE_MIN`, `SHOT_JITTER_MIN`, `WARNING_BEFORE_MIN`,
-`LATE_TIMEOUT_MIN`, `INACTIVE_TIMEOUT_MIN`, `INACTIVE_THRESHOLD`,
-`AUTO_END_THRESHOLD`, `BREAK_ALERT_MIN`, `EOD_TIMEOUT_MIN`, and for the optional
-GitHub commit evidence `GITHUB_TOKEN` / `GITHUB_USERNAME` / `GITHUB_ORGS`.
+These are generic: no name/key baked in. Each machine provisions its own AES key
+on first launch, and the worker name defaults to the OS user (changeable in the
+tray). `agent --version` prints the tag. `ci.yml` runs gofmt/vet/`go test -race`
+and a compile matrix on every push/PR.
 
-`build.sh` generates a unique random AES key per build unless you pass `AES_KEY`
-(64 hex chars). A different key per worker means one worker's extracted key can't
-open another's files.
+### Per-worker binary (hardened, optional)
+
+For a stronger tamper model, bake a **stable** AES key per worker with `build.sh`:
+
+```bash
+WORKER_NAME="Alice" AES_KEY="<same hex as last build>" ./build.sh
+```
+
+Reuse the same `AES_KEY` across versions, or that worker's existing sealed files
+become unreadable. `AES_KEY` is auto-generated if omitted. `WORKER_NAME` is only
+the default (still changeable at runtime). Optional overrides (else the bot's
+defaults apply): `CHECKIN_BASE_MIN`, `CHECKIN_JITTER_MIN`, `SHOT_BASE_MIN`,
+`SHOT_JITTER_MIN`, `WARNING_BEFORE_MIN`, `LATE_TIMEOUT_MIN`,
+`INACTIVE_TIMEOUT_MIN`, `INACTIVE_THRESHOLD`, `AUTO_END_THRESHOLD`,
+`BREAK_ALERT_MIN`, `EOD_TIMEOUT_MIN`, and for the optional GitHub commit evidence
+`GITHUB_TOKEN` / `GITHUB_USERNAME` / `GITHUB_ORGS`.
 
 ### Build prerequisites (Fyne + CGO)
 
@@ -67,8 +83,9 @@ Screenshots use X11/XShm and will fail on pure Wayland; the app treats
 
 Launch the binary. First run → consent window, then a prompt for the Discord
 webhook URL. After that it lives in the tray with: **Add update…**,
-**Change webhook…**, **Start break**, **End break**, **End session**, **Quit**.
-State and the queue live under `os.UserConfigDir()/session-agent/`.
+**Change webhook…**, **Change name…**, **Start break**, **End break**,
+**End session**, **Quit**. State and the queue live under
+`os.UserConfigDir()/session-agent/`.
 
 ## Test
 

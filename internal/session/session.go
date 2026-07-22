@@ -182,7 +182,7 @@ func (e *Engine) fireCheckIn() {
 
 	e.ui.Notify("Check-in", msgCheckIn)
 	e.ui.Prompt("Check-in", msgCheckIn)
-	e.post(queue.Item{Kind: "checkin", Title: "Check-in: " + e.cfg.WorkerName, Content: msgCheckIn, Color: colorGreen})
+	e.post(queue.Item{Kind: "checkin", Title: "Check-in: " + e.nameLocked(), Content: msgCheckIn, Color: colorGreen})
 
 	// Warning before the late deadline.
 	if e.cfg.WarningBefore > 0 && e.cfg.WarningBefore < e.cfg.LateTimeout {
@@ -203,7 +203,7 @@ func (e *Engine) fireWarning(c int64) {
 	}
 	body := fmt.Sprintf(msgWarning, int(e.cfg.WarningBefore.Minutes()))
 	e.ui.Notify("Check-in warning", body)
-	e.post(queue.Item{Kind: "warning", Title: "Warning: " + e.cfg.WorkerName, Content: body, Color: 0xffcc00})
+	e.post(queue.Item{Kind: "warning", Title: "Warning: " + e.nameLocked(), Content: body, Color: 0xffcc00})
 }
 
 func (e *Engine) fireLate(c int64) {
@@ -293,6 +293,30 @@ func (e *Engine) Submit(content string) {
 
 // ---- webhook (runtime, ungated) ----
 
+// nameLocked returns the effective worker name (runtime override, else the
+// compile-time default). Caller must hold mu.
+func (e *Engine) nameLocked() string {
+	if e.st.WorkerName != "" {
+		return e.st.WorkerName
+	}
+	return e.cfg.WorkerName
+}
+
+// Name returns the effective worker name.
+func (e *Engine) Name() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.nameLocked()
+}
+
+// SetName changes the worker name at runtime and persists it (encrypted).
+func (e *Engine) SetName(name string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.st.WorkerName = name
+	_ = e.st.Save()
+}
+
 // Webhook returns the effective webhook: the runtime override if set, else the
 // compile-time default.
 func (e *Engine) Webhook() string {
@@ -363,7 +387,7 @@ func (e *Engine) fireBreakAlert() {
 	mins := int(e.cfg.BreakAlert.Minutes()) * e.breakN
 	body := fmt.Sprintf(msgBreakAlert, mins)
 	e.ui.Notify("Break reminder", body)
-	e.post(queue.Item{Kind: "break_alert", Title: "Break: " + e.cfg.WorkerName, Content: body, Color: 0x3399ff})
+	e.post(queue.Item{Kind: "break_alert", Title: "Break: " + e.nameLocked(), Content: body, Color: 0x3399ff})
 	e.breakT = time.AfterFunc(e.cfg.BreakAlert, e.fireBreakAlert)
 }
 
@@ -432,7 +456,7 @@ func (e *Engine) buildReport() discord.Embed {
 		})
 	}
 	e2 := discord.Embed{
-		Title:       "Work Report: " + e.cfg.WorkerName,
+		Title:       "Work Report: " + e.nameLocked(),
 		Description: fmt.Sprintf("Session ID: %d • seq %d", e.st.SessionID, e.st.NextSeq),
 		Color:       colorGreen,
 		Fields:      fields,
@@ -454,6 +478,7 @@ func (e *Engine) fireShot() {
 	onBreak := e.st.OnBreak
 	closed := e.closed
 	fn := e.cfg.CaptureFn
+	name := e.nameLocked()
 	e.mu.Unlock()
 
 	if !closed && !onBreak && fn != nil {
@@ -468,7 +493,7 @@ func (e *Engine) fireShot() {
 			e.mu.Unlock()
 			_ = e.q.Add(queue.Item{
 				Seq: seq, Timestamp: time.Now().Unix(), Kind: "screenshot",
-				Title:     "Screenshot: " + e.cfg.WorkerName,
+				Title:     "Screenshot: " + name,
 				Content:   fmt.Sprintf("seq %d", seq),
 				ImagePath: s.Path, ImageSHA: s.SHA, Filename: s.Name,
 			})
@@ -485,9 +510,9 @@ func (e *Engine) fireShot() {
 // ---- posting helpers (call with mu held) ----
 
 func (e *Engine) postUpdate(u state.Update) {
-	title := "Update: " + e.cfg.WorkerName
+	title := "Update: " + e.nameLocked()
 	if u.Kind == "plan" {
-		title = "Daily Plan: " + e.cfg.WorkerName
+		title = "Daily Plan: " + e.nameLocked()
 	}
 	e.q.Add(queue.Item{
 		Seq: u.Seq, Timestamp: u.Timestamp, Kind: u.Kind,

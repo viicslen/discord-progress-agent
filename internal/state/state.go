@@ -35,6 +35,7 @@ type State struct {
 	OnBreak    bool     `json:"on_break"`
 	BreakStart int64    `json:"break_start"`
 	WebhookURL string   `json:"webhook_url,omitempty"` // runtime override; empty => compile-time default
+	WorkerName string   `json:"worker_name,omitempty"` // runtime override; empty => compile-time default
 
 	path string
 }

@@ -1,0 +1,79 @@
+name: Release
+
+# Tag a version to cut a release:  git tag v0.1.0 && git push origin v0.1.0
+# Builds one GENERIC binary per OS (no per-worker name/key baked in — the worker
+# name defaults at runtime and the AES key is provisioned per machine on first
+# run). For hardened per-worker binaries with a stable baked key, use build.sh.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CGO_ENABLED: "1"
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-amd64
+            out: discord-progress-agent-linux-amd64
+          - os: macos-latest
+            name: macos-arm64
+            out: discord-progress-agent-macos-arm64
+          - os: windows-latest
+            name: windows-amd64
+            out: discord-progress-agent-windows-amd64.exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Fyne build deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+
+      - name: Set up MinGW (Windows)
+        if: runner.os == 'Windows'
+        uses: egor-tensin/setup-mingw@v2
+
+      - name: Build
+        shell: bash
+        run: |
+          go build -trimpath -buildvcs=false \
+            -ldflags "-s -w -X discord-tracker-agent/internal/settings.Version=${GITHUB_REF_NAME}" \
+            -o "${{ matrix.out }}" ./cmd/agent
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.out }}
+          path: ${{ matrix.out }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -44,6 +44,13 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
 - **Format:** `gofmt -w ./cmd ./internal` (always before committing).
 - **Vet:** `go vet ./...` (run inside the Nix shell so `ui`/`cmd` are covered).
 
+### CI/CD (`.github/workflows/`)
+- `ci.yml` — on push/PR: gofmt check, `go vet`, `go test -race ./...` (Ubuntu with
+  Fyne deps), plus a compile matrix on Linux/macOS/Windows. Keep it green.
+- `release.yml` — on a `v*` tag: builds a generic binary per OS and publishes a
+  GitHub Release. Injects `settings.Version` from the tag. If you change the build
+  flags, the Fyne deps, or the module path, update **both** workflows.
+
 ## 2. Architecture & conventions
 
 - **Module name:** `discord-tracker-agent` (use for internal imports, e.g.
@@ -53,14 +60,22 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
 - **No database.** Unlike the bot, there is no SQLite. All persistent state is
   two AES-GCM–sealed files under `os.UserConfigDir()/session-agent/`
   (`state.dat`, `queue.dat`) plus `shots/*.png`.
-- **Compile-time settings (`internal/settings`).** Per-worker config (name,
-  intervals, thresholds, GitHub token, AES key) is injected at link time via
-  `-ldflags -X` from `build.sh`. There is deliberately **no runtime config
-  file** — a worker must not be able to edit intervals/name. Numeric knobs are
-  strings parsed in `init()` with the bot's defaults as fallback.
-- **Webhook is runtime, not compile-time.** It's prompted for on first launch
-  and editable from the tray; stored (encrypted) in `state.WebhookURL`. Read it
-  live via `Engine.Webhook()` — never cache it across a possible change.
+- **Compile-time settings (`internal/settings`).** Tunable config (intervals,
+  thresholds, GitHub token) is injected at link time via `-ldflags -X`. There is
+  no runtime config file for these — a worker must not edit intervals/thresholds.
+  Numeric knobs are strings parsed in `init()` with the bot's defaults as
+  fallback. `Version` is baked by the release workflow.
+- **Two build flavors.** `build.sh` makes a **per-worker** binary with a stable
+  baked `AESKeyHex` (stronger tamper model; reuse the same key across versions
+  or existing sealed files become unreadable). CI `release.yml` makes **generic**
+  binaries with nothing per-worker baked: the AES key is provisioned per machine
+  on first run (`key.bin`, 0600 — an accepted weakening, see §4.5) and the worker
+  name defaults at runtime.
+- **Runtime-configurable (not compile-time): webhook and worker name.** Both are
+  stored encrypted in state (`state.WebhookURL`, `state.WorkerName`) and edited
+  from the tray. `WorkerName` compiled in is only a *default*; `settings.WebhookURL`
+  is an optional default. Read live via `Engine.Webhook()` / `Engine.Name()` —
+  never cache across a possible change. Titles use `Engine.nameLocked()` under mu.
 - **The engine is UI- and side-effect-free.** `internal/session` must NOT import
   Fyne, `capture`, or `github`. The UI (`session.UI` interface) and screenshots/
   commits are injected as hooks (`Config.CaptureFn`, `Config.CommitsFn`). This is
@@ -121,10 +136,15 @@ list in sync when you introduce or rename a concept.
   anything is captured.
 - **Jitter** — randomized ± offset applied to the check-in and screenshot base
   intervals so timings aren't predictable.
-- **Compile-time settings vs. runtime webhook** — everything in
-  `internal/settings` is baked in via `-ldflags -X`; the webhook URL is the one
-  value configured at runtime (first-run prompt / tray) and stored in sealed
-  state.
+- **Compile-time settings vs. runtime values** — tunables (intervals,
+  thresholds, GitHub token) are baked via `-ldflags -X`; the **webhook** and
+  **worker name** are configured at runtime (tray / first-run) and stored in
+  sealed state. Compiled-in name/webhook are only *defaults*.
+- **Per-worker vs. generic build** — `build.sh` bakes a stable AES key per
+  worker; CI `release.yml` ships generic binaries that provision a per-machine
+  key (`key.bin`) on first run.
+- **Version** — `settings.Version` (baked in CI from the tag); `agent --version`
+  prints it.
 
 ## 4. Integrity invariants — DO NOT break these
 
@@ -143,8 +163,11 @@ editing, preserve all of:
 4. **The consent gate is hard.** No consent → the app exits and captures nothing.
    Don't add a path that captures/sends before consent is recorded.
 5. The embedded AES key / settings are a **documented, accepted ceiling** (a
-   reverse-engineer can extract them). Don't "fix" this by adding real secrecy
-   scope — and don't weaken it either.
+   reverse-engineer can extract them). Generic release binaries weaken this
+   further on purpose: with no baked key they store a per-machine `key.bin` on
+   disk, so those files are only casual-edit-proof, not owner-proof. Per-worker
+   `build.sh` binaries keep the stronger baked-key model. Don't "fix" either into
+   real secrecy scope, and don't weaken the per-worker path.
 
 ## 5. Testing
 

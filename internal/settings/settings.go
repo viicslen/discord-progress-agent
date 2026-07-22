@@ -15,9 +15,11 @@ import (
 
 // Injected at build time. Empty => use the default parsed below.
 var (
-	WorkerName = "" // required at build
-	WebhookURL = "" // required at build
-	AESKeyHex  = "" // 64 hex chars (32 bytes); required at build
+	Version = "dev" // release tag, baked in CI
+
+	WorkerName = "" // compile-time DEFAULT name; changeable at runtime (tray)
+	WebhookURL = "" // optional compile-time default; normally configured at runtime
+	AESKeyHex  = "" // 64 hex chars; if empty (generic build) a per-machine key is provisioned at runtime
 
 	CheckInBaseMin   = "60"
 	CheckInJitterMin = "15"
