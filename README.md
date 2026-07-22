@@ -158,20 +158,20 @@ Notes:
 
 Optional build-time overrides:
 
-- `CHECKIN_BASE_MIN`
-- `CHECKIN_JITTER_MIN`
-- `SHOT_BASE_MIN`
-- `SHOT_JITTER_MIN`
-- `WARNING_BEFORE_MIN`
-- `LATE_TIMEOUT_MIN`
-- `INACTIVE_TIMEOUT_MIN`
-- `INACTIVE_THRESHOLD`
-- `AUTO_END_THRESHOLD`
-- `BREAK_ALERT_MIN`
-- `EOD_TIMEOUT_MIN`
-- `GITHUB_TOKEN`
-- `GITHUB_USERNAME`
-- `GITHUB_ORGS`
+- `CHECKIN_BASE_MIN` default: `60`
+- `CHECKIN_JITTER_MIN` default: `15`
+- `SHOT_BASE_MIN` default: `50`
+- `SHOT_JITTER_MIN` default: `10`
+- `WARNING_BEFORE_MIN` default: `3`
+- `LATE_TIMEOUT_MIN` default: `30`
+- `INACTIVE_TIMEOUT_MIN` default: `10`
+- `INACTIVE_THRESHOLD` default: `2`
+- `AUTO_END_THRESHOLD` default: `3`
+- `BREAK_ALERT_MIN` default: `30`
+- `EOD_TIMEOUT_MIN` default: `5`
+- `GITHUB_TOKEN` default: empty
+- `GITHUB_USERNAME` default: empty
+- `GITHUB_ORGS` default: empty
 
 ## Platform Notes
 
