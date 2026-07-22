@@ -1,117 +1,277 @@
 # Session Agent
 
-A single-user desktop work-session tracker. It runs in the system tray on a
-worker's machine, asks for periodic status updates, takes random screenshots on
-a separate schedule, and posts everything to a Discord webhook in real time —
-queuing locally (encrypted) and retrying when the connection is spotty. It is the
-local companion to `discord-progress-tracker` and replicates its check-in /
-warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
+Desktop work-session tracking for one worker.
 
-## Design at a glance
+It runs in the system tray, asks for periodic status updates, takes screenshots on
+a separate schedule, and posts everything to a Discord webhook. If the network is
+down, it queues items locally and retries later.
 
-- **Tunables baked in, identity configured at runtime.** Intervals, thresholds,
-  and the GitHub token are baked with `-ldflags -X` (no runtime config file — a
-  worker can't loosen their own intervals). The **webhook URL** and **worker
-  name** are configured at runtime instead: asked for / defaulted on first launch
-  and changeable from the tray ("Change webhook…", "Change name…"), stored
-  encrypted in sealed state.
-- **Two build flavors.** *Generic* release binaries (from CI, one per OS) bake
-  nothing per-worker — they provision a per-machine AES key on first run. *Per-
-  worker* binaries from `build.sh` bake a stable AES key for a stronger tamper
-  model. See **Build & release** below.
-- **Tamper-resistant local files.** Session state and the offline queue are
-  sealed with **AES-GCM**: not human-readable, and any edit fails the auth tag,
-  so casual "open the file and change the log" is impossible. Each item carries a
-  **monotonic sequence number** surfaced in Discord, so deleted/reordered/replayed
-  items are visible to a reviewer. (Ceiling: a determined reverse-engineer can
-  extract the embedded key — this stops casual editing, not a motivated attacker.)
-- **Hard consent gate.** First run shows a notice-and-consent window. Decline or
-  close it and the app exits having captured nothing.
-- **Offline-first.** Updates, screenshots, and the report all flow through the
-  encrypted queue and drain to the webhook when online, in order, surviving
-  restarts.
+It is the local companion to `discord-progress-tracker` and mirrors the same
+session flow:
 
-## Install with Nix
+- check-in
+- warning
+- late
+- inactive
+- auto-end
+- breaks
+- end-of-day report
+- next-session plan
 
-The repo is a flake. Run it directly, install it, or drop into a dev shell:
+## Quick Start
+
+### Run with Nix
 
 ```bash
-nix run    github:viicslen/discord-progress-agent      # run without installing
-nix profile install github:viicslen/discord-progress-agent
-nix develop                                            # dev shell (Go + Fyne deps)
+nix run github:viicslen/discord-progress-agent
 ```
 
-The flake package is generic (name/key at runtime, like the release binaries).
-release-please keeps `flake.nix`'s `version` in sync with each release. If you
-change dependencies (`go.sum`), refresh `vendorHash`:
-`nix build .#default 2>&1 | grep got:`.
+### Install with Nix
 
-## Build & release
+```bash
+nix profile install github:viicslen/discord-progress-agent
+```
 
-### Generic release binaries (automated via release-please)
+### Open the dev shell
 
-Releases are automated by [release-please](https://github.com/googleapis/release-please).
-Land [Conventional Commits](https://www.conventionalcommits.org/) on `main`
-(`feat:`, `fix:`, `feat!:` for a breaking change) and the workflow keeps an open
-**release PR** that bumps the version and updates `CHANGELOG.md`. **Merge that PR**
-and it tags the version, creates a GitHub Release, and builds + attaches a binary
-for Linux, macOS, and Windows.
+```bash
+nix develop
+```
 
-These are generic: no name/key baked in. Each machine provisions its own AES key
-on first launch, and the worker name defaults to the OS user (changeable in the
-tray). `session-agent --version` prints the tag. `ci.yml` runs gofmt/vet/`go test -race`
-on the core packages plus a compile matrix on every push/PR.
+## What It Does
 
-### Per-worker binary (hardened, optional)
+- Lives in the system tray
+- Prompts for status updates on a schedule
+- Takes screenshots on a separate schedule
+- Sends updates and screenshots to a Discord webhook
+- Queues data locally when offline
+- Retries queued items in order
+- Pauses screenshots and check-ins during breaks
+- Requires first-run consent before capturing anything
 
-For a stronger tamper model, bake a **stable** AES key per worker with `build.sh`:
+## Runtime Behavior
+
+### First launch
+
+1. You see a consent window.
+2. If you decline, the app exits and records nothing.
+3. If no webhook is configured yet, the app asks for one.
+
+### Tray actions
+
+- `Add update…`
+- `Change webhook…`
+- `Change name…`
+- `Start break`
+- `End break`
+- `End session`
+- `Quit`
+
+### Local files
+
+State lives under `os.UserConfigDir()/session-agent/`:
+
+- `state.dat`
+- `queue.dat`
+- `shots/*.png`
+- `key.bin` for generic builds only
+
+## Security Model
+
+### Protected locally
+
+- Session state and the outbound queue are sealed with AES-GCM.
+- Files are not human-readable.
+- Manual edits fail authentication.
+- Every queued item carries a monotonic sequence number.
+- Sequence numbers are surfaced in Discord so gaps and reordering are visible.
+
+### Important limit
+
+This is tamper-resistant, not tamper-proof.
+
+- Generic builds store a per-machine key on disk.
+- Per-worker builds bake a stable key into the binary.
+- A determined machine owner can still reverse-engineer or interfere.
+
+The goal is to stop casual editing and make missing or reordered evidence visible.
+
+## Configuration Model
+
+### Runtime-configurable
+
+These are set at runtime and stored in sealed state:
+
+- worker name
+- Discord webhook URL
+
+### Build-time configurable
+
+These are compiled in with `-ldflags -X`:
+
+- check-in timing
+- screenshot timing
+- escalation thresholds
+- break alert timing
+- end-of-day timeout
+- optional GitHub commit settings
+
+There is no runtime config file for those tunables.
+
+## Build Options
+
+### Option 1: Generic build
+
+Used by:
+
+- GitHub releases
+- `nix run`
+- `nix build`
+
+Behavior:
+
+- no worker name baked in
+- no AES key baked in
+- provisions `key.bin` on first run
+- defaults the worker name from the OS user
+
+Check the version with:
+
+```bash
+session-agent --version
+```
+
+### Option 2: Per-worker build
+
+Use `build.sh` when you want a stronger per-worker tamper model.
 
 ```bash
 WORKER_NAME="Alice" AES_KEY="<same hex as last build>" ./build.sh
 ```
 
-Reuse the same `AES_KEY` across versions, or that worker's existing sealed files
-become unreadable. `AES_KEY` is auto-generated if omitted. `WORKER_NAME` is only
-the default (still changeable at runtime). Optional overrides (else the bot's
-defaults apply): `CHECKIN_BASE_MIN`, `CHECKIN_JITTER_MIN`, `SHOT_BASE_MIN`,
-`SHOT_JITTER_MIN`, `WARNING_BEFORE_MIN`, `LATE_TIMEOUT_MIN`,
-`INACTIVE_TIMEOUT_MIN`, `INACTIVE_THRESHOLD`, `AUTO_END_THRESHOLD`,
-`BREAK_ALERT_MIN`, `EOD_TIMEOUT_MIN`, and for the optional GitHub commit evidence
-`GITHUB_TOKEN` / `GITHUB_USERNAME` / `GITHUB_ORGS`.
+Notes:
 
-### Build prerequisites (Fyne + CGO)
+- Reuse the same `AES_KEY` across versions for that worker.
+- If you change the key, that worker's old sealed files become unreadable.
+- `WORKER_NAME` is only a default and can still be changed at runtime.
+- `AES_KEY` is auto-generated if omitted.
 
-The GUI uses Fyne, which needs CGO and native GL/X11 dev libraries, so it must be
-built **on each target OS** (no clean cross-compile). Install per platform:
+Optional build-time overrides:
 
-- **Linux:** a C toolchain + `libgl1-mesa-dev xorg-dev` (and an AppIndicator
-  extension for the tray on GNOME).
-- **macOS:** Xcode command-line tools. For notifications and Screen-Recording
-  permission to work, ship a signed `.app` bundle (`fyne package`), not a bare
-  binary.
-- **Windows:** MinGW-w64.
+- `CHECKIN_BASE_MIN`
+- `CHECKIN_JITTER_MIN`
+- `SHOT_BASE_MIN`
+- `SHOT_JITTER_MIN`
+- `WARNING_BEFORE_MIN`
+- `LATE_TIMEOUT_MIN`
+- `INACTIVE_TIMEOUT_MIN`
+- `INACTIVE_THRESHOLD`
+- `AUTO_END_THRESHOLD`
+- `BREAK_ALERT_MIN`
+- `EOD_TIMEOUT_MIN`
+- `GITHUB_TOKEN`
+- `GITHUB_USERNAME`
+- `GITHUB_ORGS`
 
-Screenshots adapt to the display server: a direct X11 grab on Xorg sessions,
-and the **XDG desktop portal** (`org.freedesktop.portal.Screenshot`,
-non-interactive) on Wayland — so a running `xdg-desktop-portal` backend
-(GNOME/KDE/wlroots) is required there. Capture failure is always treated as a
-normal state (logged, never a crash).
+## Platform Notes
 
-## Run
+The GUI uses Fyne, so it needs CGO and native desktop libraries.
 
-Launch the binary. First run → consent window, then a prompt for the Discord
-webhook URL. After that it lives in the tray with: **Add update…**,
-**Change webhook…**, **Change name…**, **Start break**, **End break**,
-**End session**, **Quit**. State and the queue live under
-`os.UserConfigDir()/session-agent/`.
+### Linux
 
-## Test
+- use the provided Nix shell, or
+- install a C toolchain plus `libgl1-mesa-dev` and `xorg-dev`
+- GNOME may also need an AppIndicator extension for tray support
+
+### macOS
+
+- install Xcode command-line tools
+- use a signed `.app` bundle for notifications and screen-recording permission
+
+### Windows
+
+- install MinGW-w64
+
+## Screenshot Capture
+
+Capture depends on the display server:
+
+- Xorg: direct display capture
+- Wayland: XDG desktop portal via `org.freedesktop.portal.Screenshot`
+
+Wayland requirements:
+
+- a working `xdg-desktop-portal`
+- a supported desktop backend such as GNOME, KDE, or wlroots
+
+Capture failure is treated as a normal unavailable state. It is logged, but it
+does not crash the app.
+
+## Build And Release
+
+Releases use [release-please](https://github.com/googleapis/release-please).
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:`
+- `fix:`
+- `feat!:` or `BREAKING CHANGE:` for breaking changes
+
+Workflow:
+
+1. Merge conventional commits into `main`.
+2. release-please updates the release PR and `CHANGELOG.md`.
+3. Merge the release PR.
+4. GitHub tags the release and publishes binaries for Linux, macOS, and Windows.
+
+`flake.nix` version bumps are also managed by release-please.
+
+If `go.sum` changes, refresh the Nix `vendorHash` with:
 
 ```bash
-go test ./internal/vault/... ./internal/state/... ./internal/queue/... \
-        ./internal/session/... ./internal/settings/...
+nix build .#default 2>&1 | grep got:
 ```
 
-These cover the integrity core (seal/open/tamper/not-plaintext), sequence
-monotonicity across reloads, offline-queue drain ordering, and the full
-escalation-to-auto-end path — none of which need a display or CGO.
+## Development
+
+### Build everything
+
+Run inside the Nix shell when touching GUI code:
+
+```bash
+go build -buildvcs=false ./...
+```
+
+### Run core tests
+
+```bash
+go test ./internal/vault/... ./internal/state/... ./internal/queue/... ./internal/session/... ./internal/settings/...
+```
+
+### Format
+
+```bash
+gofmt -w ./cmd ./internal
+```
+
+### Vet
+
+```bash
+go vet ./...
+```
+
+## Test Coverage
+
+Core tests cover:
+
+- vault seal/open behavior
+- tamper detection
+- non-plaintext persistence checks
+- sequence monotonicity across reloads
+- offline queue drain ordering
+- screenshot queue cleanup
+- escalation through auto-end
+- break behavior
+- runtime webhook persistence
+
+These tests do not require a display server or CGO.
