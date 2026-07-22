@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0](https://github.com/viicslen/discord-progress-agent/compare/v0.0.2...v0.1.0) (2026-07-22)
+
+
+### Features
+
+* capture screenshots on Wayland via the XDG desktop portal ([eb0a784](https://github.com/viicslen/discord-progress-agent/commit/eb0a784812b60542d4b6ae2e1f97419992078e2f))
+
 ## [0.0.2](https://github.com/viicslen/discord-progress-agent/compare/v0.0.1...v0.0.2) (2026-07-22)
 
 
