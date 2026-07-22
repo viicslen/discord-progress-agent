@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/viicslen/discord-progress-agent/compare/v0.1.1...v0.1.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* increase default screenshot interval ([7faf6ec](https://github.com/viicslen/discord-progress-agent/commit/7faf6eceb78b0a716643e02b88fffd2c6a50a3f7))
+
 ## [0.1.1](https://github.com/viicslen/discord-progress-agent/compare/v0.1.0...v0.1.1) (2026-07-22)
 
 
