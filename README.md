@@ -59,7 +59,7 @@ for Linux, macOS, and Windows.
 
 These are generic: no name/key baked in. Each machine provisions its own AES key
 on first launch, and the worker name defaults to the OS user (changeable in the
-tray). `agent --version` prints the tag. `ci.yml` runs gofmt/vet/`go test -race`
+tray). `session-agent --version` prints the tag. `ci.yml` runs gofmt/vet/`go test -race`
 on the core packages plus a compile matrix on every push/PR.
 
 ### Per-worker binary (hardened, optional)

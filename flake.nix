@@ -10,6 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
+        lib = pkgs.lib;
 
         # Bumped automatically by release-please (see release-please-config.json).
         version = "0.0.2"; # x-release-please-version
@@ -25,6 +26,16 @@
           xorg.libXxf86vm
           xorg.libXext
         ];
+
+        desktopItem = pkgs.makeDesktopItem {
+          name = "discord-progress-agent";
+          desktopName = "Session Agent";
+          comment = "Single-user desktop work-session tracker that posts to Discord";
+          exec = "session-agent";
+          icon = "discord-progress-agent";
+          categories = [ "Utility" "Network" ];
+          startupNotify = false;
+        };
       in
       {
         packages.default = pkgs.buildGoModule {
@@ -36,10 +47,21 @@
           #   nix build .#default 2>&1 | grep got:
           vendorHash = "sha256-GHSKdexNApbksqK672dyaeNTRQp1eOsV06FRSQKYhm4=";
 
-          subPackages = [ "cmd/agent" ];
+          subPackages = [ "cmd/session-agent" ];
 
-          nativeBuildInputs = [ pkgs.pkg-config ];
+          nativeBuildInputs = [ pkgs.pkg-config ]
+            ++ lib.optional pkgs.stdenv.isLinux pkgs.copyDesktopItems;
           buildInputs = guiDeps;
+
+          # copyDesktopItems installs these into $out/share/applications.
+          desktopItems = lib.optionals pkgs.stdenv.isLinux [ desktopItem ];
+
+          # Install the icon into the hicolor theme so the .desktop entry (and
+          # desktop environments) resolve it by name.
+          postInstall = lib.optionalString pkgs.stdenv.isLinux ''
+            install -Dm644 assets/icon.svg \
+              "$out/share/icons/hicolor/scalable/apps/discord-progress-agent.svg"
+          '';
 
           ldflags = [
             "-s"
@@ -51,7 +73,7 @@
           meta = with pkgs.lib; {
             description = "Single-user desktop work-session tracker that posts to Discord";
             homepage = "https://github.com/viicslen/discord-progress-agent";
-            mainProgram = "agent";
+            mainProgram = "session-agent";
             platforms = platforms.unix;
           };
         };

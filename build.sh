@@ -43,5 +43,5 @@ add GitHubOrgs        "${GITHUB_ORGS:-}"
 
 OUT="${OUT:-session-agent}"
 echo "Building $OUT for worker '${WORKER_NAME:-<runtime default>}' (AES key ${AES_KEY:0:8}…)"
-eval CGO_ENABLED=1 go build -ldflags \"$LD\" -o "$OUT" ./cmd/agent
+eval CGO_ENABLED=1 go build -ldflags \"$LD\" -o "$OUT" ./cmd/session-agent
 echo "Done: $OUT"

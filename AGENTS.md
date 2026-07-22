@@ -27,7 +27,7 @@ explicitly asking.
 ## 1. Build, Lint, and Test
 
 The GUI uses **Fyne**, which needs CGO + native GL/X11 libraries. Use the
-provided Nix shell for anything that touches `internal/ui` or `cmd/agent`.
+provided Nix shell for anything that touches `internal/ui` or `cmd/session-agent`.
 
 ### In the Nix shell (full tree, incl. GUI)
 - **Enter shell:** `nix develop` (flake) or `nix-shell` (`shell.nix`); `direnv
@@ -70,7 +70,8 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
 
 - **Module name:** `discord-tracker-agent` (use for internal imports, e.g.
   `discord-tracker-agent/internal/vault`).
-- **Layout:** standard Go — `cmd/agent` (wiring/main), `internal/*` (everything
+- **Layout:** standard Go — `cmd/session-agent` (wiring/main; binary name avoids
+  colliding with other `agent` CLIs), `internal/*` (everything
   else). One concern per package.
 - **No database.** Unlike the bot, there is no SQLite. All persistent state is
   two AES-GCM–sealed files under `os.UserConfigDir()/session-agent/`
