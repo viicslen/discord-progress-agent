@@ -20,6 +20,15 @@ session flow:
 
 ## Quick Start
 
+### Install the latest release
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/viicslen/discord-progress-agent/main/install.sh | sh
+```
+
+By default the script installs `session-agent` to `/usr/local/bin` when writable,
+otherwise to `~/.local/bin`. Override with `INSTALL_DIR=/path/to/bin`.
+
 ### Run with Nix
 
 ```bash
@@ -124,6 +133,7 @@ There is no runtime config file for those tunables.
 
 Used by:
 
+- `install.sh`
 - GitHub releases
 - `nix run`
 - `nix build`
