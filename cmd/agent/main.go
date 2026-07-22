@@ -22,6 +22,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/driver/desktop"
+	"fyne.io/fyne/v2/theme"
 
 	"discord-tracker-agent/internal/capture"
 	"discord-tracker-agent/internal/discord"
@@ -62,7 +63,10 @@ func main() {
 		log.Print("no webhook configured — items will queue until one is set via the tray")
 	}
 
-	a := app.New()
+	// NewWithID (not New): a unique app ID is required for notifications and the
+	// preferences API, and it namespaces the OS notification identity.
+	a := app.NewWithID("com.dostov.discord-progress-agent")
+	a.SetIcon(theme.InfoIcon()) // valid default icon so the tray/notifications don't fail to load one
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var eng *session.Engine
@@ -130,6 +134,7 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 	if !ok {
 		return
 	}
+	desk.SetSystemTrayIcon(theme.InfoIcon()) // explicit tray icon (avoids "unknown format" on the default)
 	m := fyne.NewMenu("Session Agent",
 		fyne.NewMenuItem("Add update…", func() { u.Prompt("Update", "What are you working on?") }),
 		fyne.NewMenuItem("Change webhook…", func() {
