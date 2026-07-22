@@ -92,6 +92,9 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
   from the tray. `WorkerName` compiled in is only a *default*; `settings.WebhookURL`
   is an optional default. Read live via `Engine.Webhook()` / `Engine.Name()` —
   never cache across a possible change. Titles use `Engine.nameLocked()` under mu.
+- **App-owned runtime icon.** `cmd/session-agent` uses a generated PNG
+  `fyne.Resource` for the app/tray icon instead of a Fyne theme icon so desktop
+  environments don't choke on unsupported icon formats at runtime.
 - **Capture is display-server aware (`internal/capture`).** `All()` →
   `platformCapture`: on Linux, Wayland uses the XDG Screenshot portal over D-Bus
   (`capture_linux.go`, `godbus/dbus/v5`), X11 and macOS/Windows use kbinani
