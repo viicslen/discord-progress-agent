@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/viicslen/discord-progress-agent/compare/v0.1.0...v0.1.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* capture display bounds correctly ([508e804](https://github.com/viicslen/discord-progress-agent/commit/508e804d1571ca5830c27a6052cae7384eabcd64))
+* use app-owned runtime icon ([b6a97c8](https://github.com/viicslen/discord-progress-agent/commit/b6a97c89523862ad4bae2bfb6d5b75eba0f5313d))
+
 ## [0.1.0](https://github.com/viicslen/discord-progress-agent/compare/v0.0.2...v0.1.0) (2026-07-22)
 
 
