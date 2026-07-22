@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/viicslen/discord-progress-agent/compare/v0.2.0...v0.2.1) (2026-07-22)
+
+
+### Bug Fixes
+
+* gofmt internal/capture/capture.go ([81dbd9a](https://github.com/viicslen/discord-progress-agent/commit/81dbd9a7184e21b67d61d2cb2201260a574ade86))
+* gofmt internal/capture/capture.go ([#7](https://github.com/viicslen/discord-progress-agent/issues/7)) ([cb019ae](https://github.com/viicslen/discord-progress-agent/commit/cb019ae29f3e2141006e7e161d5d565381ff2f61))
+
 ## [0.2.0](https://github.com/viicslen/discord-progress-agent/compare/v0.1.2...v0.2.0) (2026-07-22)
 
 
