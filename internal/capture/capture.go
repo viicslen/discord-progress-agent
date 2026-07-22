@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"image"
 	"image/png"
 	"os"
 	"path/filepath"
@@ -19,6 +20,12 @@ import (
 	"github.com/kbinani/screenshot"
 
 	"discord-tracker-agent/internal/session"
+)
+
+var (
+	numActiveDisplays = screenshot.NumActiveDisplays
+	getDisplayBounds = screenshot.GetDisplayBounds
+	captureRect      = screenshot.CaptureRect
 )
 
 // All captures the screen(s) to dir. It is wired into the engine as
@@ -35,14 +42,22 @@ func captureKbinani(dir string) ([]session.Shot, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	n := screenshot.NumActiveDisplays()
+	n := numActiveDisplays()
 	if n == 0 {
 		return nil, fmt.Errorf("no active displays")
 	}
 	var shots []session.Shot
 	var firstErr error
 	for i := 0; i < n; i++ {
-		img, err := screenshot.CaptureDisplay(i)
+		bounds := getDisplayBounds(i)
+		if bounds.Empty() {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("display %d has empty bounds", i)
+			}
+			continue
+		}
+
+		img, err := captureRect(bounds)
 		if err != nil {
 			if firstErr == nil {
 				firstErr = err
@@ -58,7 +73,7 @@ func captureKbinani(dir string) ([]session.Shot, error) {
 			}
 			continue
 		}
-		if err := png.Encode(f, img); err != nil {
+		if err := png.Encode(f, cloneToZeroOrigin(img)); err != nil {
 			f.Close()
 			if firstErr == nil {
 				firstErr = err
@@ -80,6 +95,17 @@ func captureKbinani(dir string) ([]session.Shot, error) {
 		return nil, firstErr
 	}
 	return shots, firstErr
+}
+
+func cloneToZeroOrigin(src image.Image) *image.RGBA {
+	b := src.Bounds()
+	dst := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	for y := 0; y < b.Dy(); y++ {
+		for x := 0; x < b.Dx(); x++ {
+			dst.Set(x, y, src.At(b.Min.X+x, b.Min.Y+y))
+		}
+	}
+	return dst
 }
 
 func sha256File(path string) (string, error) {
