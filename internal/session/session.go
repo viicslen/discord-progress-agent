@@ -182,7 +182,6 @@ func (e *Engine) fireCheckIn() {
 
 	e.ui.Notify("Check-in", msgCheckIn)
 	e.ui.Prompt("Check-in", msgCheckIn)
-	e.post(queue.Item{Kind: "checkin", Title: "Check-in: " + e.nameLocked(), Content: msgCheckIn, Color: colorGreen})
 
 	// Warning before the late deadline.
 	if e.cfg.WarningBefore > 0 && e.cfg.WarningBefore < e.cfg.LateTimeout {

@@ -68,7 +68,7 @@ func TestEscalationToAutoEnd(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 
 	got := kinds(q)
-	want := []string{"checkin", "warning", "missed_late", "missed_inactive", "auto_end", "report"}
+	want := []string{"warning", "missed_late", "missed_inactive", "auto_end", "report"}
 	if len(got) != len(want) {
 		t.Fatalf("kinds = %v, want %v", got, want)
 	}
@@ -94,12 +94,12 @@ func TestAnswerResetsMissed(t *testing.T) {
 	time.Sleep(120 * time.Millisecond)
 
 	for _, k := range kinds(q) {
-		if k == "missed_late" || k == "missed_inactive" || k == "auto_end" {
+		if k == "checkin" || k == "missed_late" || k == "missed_inactive" || k == "auto_end" {
 			t.Fatalf("answered cycle should not escalate, got kinds %v", kinds(q))
 		}
 	}
 	got := kinds(q)
-	if len(got) < 2 || got[1] != "plan" {
+	if len(got) != 1 || got[0] != "plan" {
 		t.Fatalf("expected first answer logged as plan, got %v", got)
 	}
 }
