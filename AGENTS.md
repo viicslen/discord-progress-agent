@@ -30,8 +30,10 @@ The GUI uses **Fyne**, which needs CGO + native GL/X11 libraries. Use the
 provided Nix shell for anything that touches `internal/ui` or `cmd/agent`.
 
 ### In the Nix shell (full tree, incl. GUI)
-- **Enter shell:** `nix-shell` (or `direnv allow` once, then it's automatic).
+- **Enter shell:** `nix develop` (flake) or `nix-shell` (`shell.nix`); `direnv
+  allow` once picks up `.envrc`. Both provide Go + the Fyne CGO/X11 deps.
 - **Build all:** `go build -buildvcs=false ./...`
+- **Nix package:** `nix build .#default` (whole-app Fyne build via `flake.nix`).
 - **Per-worker binary:** `WORKER_NAME="Alice" ./build.sh` (see §2).
 
 ### Without the shell (core logic only — no display/CGO needed)
@@ -54,7 +56,11 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
   creates the tag + GitHub Release, and the gated `build` job then compiles a
   generic binary per OS and uploads them as assets. The build runs in the *same*
   workflow (a GITHUB_TOKEN-created tag can't trigger a separate tag listener).
-  Config: `release-please-config.json` + `.release-please-manifest.json`.
+  Config: `release-please-config.json` + `.release-please-manifest.json`. The
+  config's `extra-files` makes release-please also bump the `version` in
+  `flake.nix` (the `# x-release-please-version` marker line) on each release —
+  keep that marker intact. `vendorHash` is **not** auto-updated: refresh it by
+  hand when `go.sum` changes (`nix build .#default 2>&1 | grep got:`).
 - **Commit messages must be Conventional Commits** (`feat:`, `fix:`, `feat!:`/
   `BREAKING CHANGE:` for majors, `chore:`/`docs:`/`refactor:` for no bump) so
   release-please can compute the version. If you change build flags, Fyne deps, or

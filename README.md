@@ -31,6 +31,21 @@ warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
   encrypted queue and drain to the webhook when online, in order, surviving
   restarts.
 
+## Install with Nix
+
+The repo is a flake. Run it directly, install it, or drop into a dev shell:
+
+```bash
+nix run    github:viicslen/discord-progress-agent      # run without installing
+nix profile install github:viicslen/discord-progress-agent
+nix develop                                            # dev shell (Go + Fyne deps)
+```
+
+The flake package is generic (name/key at runtime, like the release binaries).
+release-please keeps `flake.nix`'s `version` in sync with each release. If you
+change dependencies (`go.sum`), refresh `vendorHash`:
+`nix build .#default 2>&1 | grep got:`.
+
 ## Build & release
 
 ### Generic release binaries (automated via release-please)
