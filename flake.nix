@@ -18,13 +18,13 @@
         # Fyne (CGO) runtime/build deps.
         guiDeps = with pkgs; [
           libGL
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXi
-          xorg.libXinerama
-          xorg.libXrandr
-          xorg.libXxf86vm
-          xorg.libXext
+          libx11
+          libxcursor
+          libxi
+          libxinerama
+          libxrandr
+          libxxf86vm
+          libxext
         ];
 
         desktopItem = pkgs.makeDesktopItem {
