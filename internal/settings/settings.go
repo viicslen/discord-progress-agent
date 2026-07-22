@@ -23,7 +23,7 @@ var (
 
 	CheckInBaseMin   = "60"
 	CheckInJitterMin = "15"
-	ShotBaseMin      = "20"
+	ShotBaseMin      = "50"
 	ShotJitterMin    = "10"
 
 	WarningBeforeMin   = "3"
@@ -58,7 +58,7 @@ var (
 func init() {
 	CheckInBase = mins(CheckInBaseMin, 60)
 	CheckInJitter = mins(CheckInJitterMin, 15)
-	ShotBase = mins(ShotBaseMin, 20)
+	ShotBase = mins(ShotBaseMin, 50)
 	ShotJitter = mins(ShotJitterMin, 10)
 	WarningBefore = mins(WarningBeforeMin, 3)
 	LateTimeout = mins(LateTimeoutMin, 30)
