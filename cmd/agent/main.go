@@ -65,7 +65,7 @@ func main() {
 
 	// NewWithID (not New): a unique app ID is required for notifications and the
 	// preferences API, and it namespaces the OS notification identity.
-	a := app.NewWithID("com.dostov.discord-progress-agent")
+	a := app.NewWithID("com.viicslen.discord-progress-agent")
 	a.SetIcon(theme.InfoIcon()) // valid default icon so the tray/notifications don't fail to load one
 	ctx, cancel := context.WithCancel(context.Background())
 
