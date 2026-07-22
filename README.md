@@ -91,8 +91,11 @@ built **on each target OS** (no clean cross-compile). Install per platform:
   binary.
 - **Windows:** MinGW-w64.
 
-Screenshots use X11/XShm and will fail on pure Wayland; the app treats
-"capture unavailable" as a normal state (logged, never a crash).
+Screenshots adapt to the display server: a direct X11 grab on Xorg sessions,
+and the **XDG desktop portal** (`org.freedesktop.portal.Screenshot`,
+non-interactive) on Wayland — so a running `xdg-desktop-portal` backend
+(GNOME/KDE/wlroots) is required there. Capture failure is always treated as a
+normal state (logged, never a crash).
 
 ## Run
 

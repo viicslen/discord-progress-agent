@@ -92,6 +92,11 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
   from the tray. `WorkerName` compiled in is only a *default*; `settings.WebhookURL`
   is an optional default. Read live via `Engine.Webhook()` / `Engine.Name()` —
   never cache across a possible change. Titles use `Engine.nameLocked()` under mu.
+- **Capture is display-server aware (`internal/capture`).** `All()` →
+  `platformCapture`: on Linux, Wayland uses the XDG Screenshot portal over D-Bus
+  (`capture_linux.go`, `godbus/dbus/v5`), X11 and macOS/Windows use kbinani
+  (`capture.go` / `capture_other.go`). Keep the D-Bus/portal code behind the
+  `//go:build linux` tag so non-Linux builds don't pull it in.
 - **The engine is UI- and side-effect-free.** `internal/session` must NOT import
   Fyne, `capture`, or `github`. The UI (`session.UI` interface) and screenshots/
   commits are injected as hooks (`Config.CaptureFn`, `Config.CommitsFn`). This is

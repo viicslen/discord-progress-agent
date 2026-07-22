@@ -1,6 +1,10 @@
-// Package capture takes screenshots of all displays. Failure (no permission,
-// Wayland, headless) is returned as an error for the caller to swallow — it is a
-// normal state, never a crash.
+// Package capture takes screenshots. Failure (no permission, headless, an
+// unsupported Wayland compositor) is returned as an error for the caller to
+// swallow — it is a normal state, never a crash.
+//
+// On Linux the display server matters: X11 sessions are grabbed directly
+// (kbinani), while Wayland forbids that and must go through the XDG desktop
+// portal — see capture_linux.go. All() dispatches via platformCapture.
 package capture
 
 import (
@@ -17,10 +21,16 @@ import (
 	"discord-tracker-agent/internal/session"
 )
 
-// All captures every active display to dir, returning one Shot per display.
-// It is wired into the engine as Config.CaptureFn. Filenames are unique on their
-// own (the engine assigns the sequence number separately for the embed).
+// All captures the screen(s) to dir. It is wired into the engine as
+// Config.CaptureFn. Filenames are unique on their own (the engine assigns the
+// sequence number separately for the embed).
 func All(dir string) ([]session.Shot, error) {
+	return platformCapture(dir)
+}
+
+// captureKbinani grabs every active display directly (X11 on Linux, native on
+// macOS/Windows), one Shot per display.
+func captureKbinani(dir string) ([]session.Shot, error) {
 	stamp := time.Now().UnixNano()
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err

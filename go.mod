@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	fyne.io/fyne/v2 v2.6.1
+	github.com/godbus/dbus/v5 v5.1.0
 	github.com/kbinani/screenshot v0.0.0-20240820160931-a8a2c5d0e191
 )
 
@@ -22,7 +23,6 @@ require (
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/go-text/typesetting v0.2.1 // indirect
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/hack-pad/go-indexeddb v0.3.2 // indirect
 	github.com/hack-pad/safejs v0.1.0 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20241217141322-fcc2cadd6f08 // indirect
