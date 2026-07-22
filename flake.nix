@@ -12,7 +12,7 @@
         pkgs = import nixpkgs { inherit system; };
 
         # Bumped automatically by release-please (see release-please-config.json).
-        version = "0.0.1"; # x-release-please-version
+        version = "0.0.2"; # x-release-please-version
 
         # Fyne (CGO) runtime/build deps.
         guiDeps = with pkgs; [

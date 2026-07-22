@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.2](https://github.com/viicslen/discord-progress-agent/compare/v0.0.1...v0.0.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* set app ID and icon so tray and notifications initialize ([040dfda](https://github.com/viicslen/discord-progress-agent/commit/040dfda98d25f86e82b0ddd8e3a56c7c037d1a54))
+* use com.viicslen app ID ([147cdbf](https://github.com/viicslen/discord-progress-agent/commit/147cdbfcbf70953b838dc8e31e2a714411ca1b2f))
+
 ## 0.0.1 (2026-07-22)
 
 
