@@ -1,23 +1,39 @@
 name: Release
 
-# Tag a version to cut a release:  git tag v0.1.0 && git push origin v0.1.0
-# Builds one GENERIC binary per OS (no per-worker name/key baked in — the worker
-# name defaults at runtime and the AES key is provisioned per machine on first
-# run). For hardened per-worker binaries with a stable baked key, use build.sh.
+# Automated releases via release-please. On every push to main it maintains a
+# "release PR" (version bump + CHANGELOG) from your Conventional Commits
+# (feat:/fix:/…). Merging that PR creates the tag + GitHub Release, and the build
+# job below then compiles a generic binary per OS and uploads them as assets.
+#
+# The build runs in THIS workflow (gated on release_created) on purpose: a tag
+# created by GITHUB_TOKEN does not trigger a separate tag-listening workflow.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
 
 permissions:
   contents: write
-
-env:
-  CGO_ENABLED: "1"
+  pull-requests: write
 
 jobs:
+  release-please:
+    name: Release PR / tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: rp
+
   build:
     name: Build ${{ matrix.name }}
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ${{ matrix.os }}
+    env:
+      CGO_ENABLED: "1"
+      TAG: ${{ needs.release-please.outputs.tag_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -48,30 +64,11 @@ jobs:
         shell: bash
         run: |
           go build -trimpath -buildvcs=false \
-            -ldflags "-s -w -X discord-tracker-agent/internal/settings.Version=${GITHUB_REF_NAME}" \
+            -ldflags "-s -w -X discord-tracker-agent/internal/settings.Version=${TAG}" \
             -o "${{ matrix.out }}" ./cmd/agent
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.out }}
-          path: ${{ matrix.out }}
-          if-no-files-found: error
-
-  release:
-    name: Publish release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
-          fail_on_unmatched_files: true
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "${{ matrix.out }}" --clobber

@@ -45,11 +45,20 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
 - **Vet:** `go vet ./...` (run inside the Nix shell so `ui`/`cmd` are covered).
 
 ### CI/CD (`.github/workflows/`)
-- `ci.yml` — on push/PR: gofmt check, `go vet`, `go test -race ./...` (Ubuntu with
-  Fyne deps), plus a compile matrix on Linux/macOS/Windows. Keep it green.
-- `release.yml` — on a `v*` tag: builds a generic binary per OS and publishes a
-  GitHub Release. Injects `settings.Version` from the tag. If you change the build
-  flags, the Fyne deps, or the module path, update **both** workflows.
+- `ci.yml` — on push/PR: gofmt check + `go vet` + `go test -race` on the **core**
+  packages only (no Fyne/CGO, so it's fast), plus a full compile matrix on
+  Linux/macOS/Windows (the matrix is where ui/cmd + Fyne actually get built and
+  vetted). Keep it green.
+- `release.yml` — **release-please** driven. On push to main it maintains a
+  release PR (version bump + `CHANGELOG.md`) from Conventional Commits; merging it
+  creates the tag + GitHub Release, and the gated `build` job then compiles a
+  generic binary per OS and uploads them as assets. The build runs in the *same*
+  workflow (a GITHUB_TOKEN-created tag can't trigger a separate tag listener).
+  Config: `release-please-config.json` + `.release-please-manifest.json`.
+- **Commit messages must be Conventional Commits** (`feat:`, `fix:`, `feat!:`/
+  `BREAKING CHANGE:` for majors, `chore:`/`docs:`/`refactor:` for no bump) so
+  release-please can compute the version. If you change build flags, Fyne deps, or
+  the module path, update **both** workflows.
 
 ## 2. Architecture & conventions
 

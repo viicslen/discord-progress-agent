@@ -5,13 +5,19 @@ on:
     branches: [main]
   pull_request:
 
-env:
-  CGO_ENABLED: "1"
-
 jobs:
+  # Fast job: gofmt + vet + race tests on the CORE packages only. These have no
+  # Fyne/CGO dependency, so nothing heavy is compiled and no apt install is
+  # needed — this finishes in seconds. Full-tree compilation (incl. Fyne) is the
+  # build matrix's job below.
   lint-test:
-    name: Lint & tests
+    name: Lint & core tests
     runs-on: ubuntu-latest
+    env:
+      CORE: >-
+        ./internal/vault/... ./internal/state/... ./internal/queue/...
+        ./internal/session/... ./internal/settings/... ./internal/discord/...
+        ./internal/github/...
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -26,14 +32,15 @@ jobs:
             echo "These files need gofmt:"; echo "$unformatted"; exit 1
           fi
 
-      - name: Install Fyne build deps
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev xorg-dev
+      - name: Vet (core)
+        env:
+          CGO_ENABLED: "0"
+        run: go vet $CORE
 
-      - name: Vet
-        run: go vet ./...
-
-      - name: Test (race)
-        run: go test -race ./...
+      - name: Test (race, core)
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race $CORE
 
   build:
     name: Build (${{ matrix.os }})
@@ -42,6 +49,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      CGO_ENABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -57,3 +66,9 @@ jobs:
 
       - name: Build
         run: go build ./...
+
+      # Vet the full tree (incl. ui/cmd, which need Fyne) once, reusing this
+      # job's already-compiled build cache.
+      - name: Vet (full)
+        if: runner.os == 'Linux'
+        run: go vet ./...

@@ -33,19 +33,19 @@ warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
 
 ## Build & release
 
-### Generic release binaries (CI)
+### Generic release binaries (automated via release-please)
 
-Push a version tag and GitHub Actions (`.github/workflows/release.yml`) builds a
-binary for Linux, macOS, and Windows and attaches them to a GitHub Release:
-
-```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
+Releases are automated by [release-please](https://github.com/googleapis/release-please).
+Land [Conventional Commits](https://www.conventionalcommits.org/) on `main`
+(`feat:`, `fix:`, `feat!:` for a breaking change) and the workflow keeps an open
+**release PR** that bumps the version and updates `CHANGELOG.md`. **Merge that PR**
+and it tags the version, creates a GitHub Release, and builds + attaches a binary
+for Linux, macOS, and Windows.
 
 These are generic: no name/key baked in. Each machine provisions its own AES key
 on first launch, and the worker name defaults to the OS user (changeable in the
 tray). `agent --version` prints the tag. `ci.yml` runs gofmt/vet/`go test -race`
-and a compile matrix on every push/PR.
+on the core packages plus a compile matrix on every push/PR.
 
 ### Per-worker binary (hardened, optional)
 
