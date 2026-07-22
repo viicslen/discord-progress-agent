@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/viicslen/discord-progress-agent/compare/v0.1.2...v0.2.0) (2026-07-22)
+
+
+### Features
+
+* add release install script ([acd291c](https://github.com/viicslen/discord-progress-agent/commit/acd291c831d2dd5b2678be2d9b3a89f419240848))
+
+
+### Bug Fixes
+
+* keep check-in prompts out of Discord ([9b87b25](https://github.com/viicslen/discord-progress-agent/commit/9b87b251131aa041696bd765bdf520471febdf69))
+
 ## [0.1.2](https://github.com/viicslen/discord-progress-agent/compare/v0.1.1...v0.1.2) (2026-07-22)
 
 
