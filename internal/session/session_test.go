@@ -104,6 +104,36 @@ func TestAnswerResetsMissed(t *testing.T) {
 	}
 }
 
+func TestWebhookRuntimeConfigPersists(t *testing.T) {
+	dir := t.TempDir()
+	sp := filepath.Join(dir, "state.dat")
+	st, err := state.Load(sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q, err := queue.Load(filepath.Join(dir, "queue.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := New(Config{WorkerName: "t"}, fakeUI{}, st, q, func() {})
+
+	if got := e.Webhook(); got != "" {
+		t.Fatalf("expected no webhook before configuration, got %q", got)
+	}
+	e.SetWebhook("https://configured")
+	if got := e.Webhook(); got != "https://configured" {
+		t.Fatalf("runtime webhook not applied, got %q", got)
+	}
+
+	reloaded, err := state.Load(sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.WebhookURL != "https://configured" {
+		t.Fatalf("runtime webhook did not persist, got %q", reloaded.WebhookURL)
+	}
+}
+
 func TestBreakPausesCapture(t *testing.T) {
 	var captures int
 	cfg := Config{

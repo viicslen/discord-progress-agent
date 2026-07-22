@@ -9,12 +9,16 @@ warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
 
 ## Design at a glance
 
-- **Compile-time config, no runtime settings file.** Every per-worker value
-  (name, webhook, intervals, thresholds, GitHub token, encryption key) is baked
-  into the binary with `-ldflags -X`. A worker cannot change intervals, redirect
-  the webhook, or rename themselves without recompiling. Build one binary per
-  worker — stricter (shorter intervals) for less-trusted workers, looser for the
-  rest. See `build.sh`.
+- **Compile-time config, no runtime settings file.** Per-worker values (name,
+  intervals, thresholds, GitHub token, encryption key) are baked into the binary
+  with `-ldflags -X`. A worker cannot change intervals or rename themselves
+  without recompiling. Build one binary per worker — stricter (shorter intervals)
+  for less-trusted workers, looser for the rest. See `build.sh`.
+- **Webhook configured at runtime.** The Discord webhook URL is *not* baked in.
+  The app asks for it on first launch and it can be changed from the tray
+  ("Change webhook…"). It is stored encrypted in the sealed state, so it is not
+  plaintext-editable and survives restarts. Until one is set, activity keeps
+  queuing locally.
 - **Tamper-resistant local files.** Session state and the offline queue are
   sealed with **AES-GCM**: not human-readable, and any edit fails the auth tag,
   so casual "open the file and change the log" is impossible. Each item carries a
@@ -30,12 +34,11 @@ warning / late / inactive / auto-end escalation, breaks, and end-of-day flow.
 ## Build (per worker)
 
 ```bash
-WORKER_NAME="Alice" \
-WEBHOOK_URL="https://discord.com/api/webhooks/XXX/YYY" \
-./build.sh
+WORKER_NAME="Alice" ./build.sh
 ```
 
-Optional overrides (else the bot's defaults apply): `CHECKIN_BASE_MIN`,
+The webhook is entered at runtime (first launch), not here. Optional overrides
+(else the bot's defaults apply): `CHECKIN_BASE_MIN`,
 `CHECKIN_JITTER_MIN`, `SHOT_BASE_MIN`, `SHOT_JITTER_MIN`, `WARNING_BEFORE_MIN`,
 `LATE_TIMEOUT_MIN`, `INACTIVE_TIMEOUT_MIN`, `INACTIVE_THRESHOLD`,
 `AUTO_END_THRESHOLD`, `BREAK_ALERT_MIN`, `EOD_TIMEOUT_MIN`, and for the optional
@@ -62,9 +65,10 @@ Screenshots use X11/XShm and will fail on pure Wayland; the app treats
 
 ## Run
 
-Launch the binary. First run → consent window. After agreeing it lives in the
-tray with: **Add update…**, **Start break**, **End break**, **End session**,
-**Quit**. State and the queue live under `os.UserConfigDir()/session-agent/`.
+Launch the binary. First run → consent window, then a prompt for the Discord
+webhook URL. After that it lives in the tray with: **Add update…**,
+**Change webhook…**, **Start break**, **End break**, **End session**, **Quit**.
+State and the queue live under `os.UserConfigDir()/session-agent/`.
 
 ## Test
 

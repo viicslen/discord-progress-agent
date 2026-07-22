@@ -2,11 +2,10 @@
 # Build a per-worker binary. Every setting is baked in here — the worker cannot
 # change it without recompiling. Run once per worker with their values.
 #
-#   WORKER_NAME="Alice" \
-#   WEBHOOK_URL="https://discord.com/api/webhooks/xxx/yyy" \
-#   ./build.sh
+#   WORKER_NAME="Alice" ./build.sh
 #
-# Optional overrides (else the bot defaults apply):
+# The webhook URL is NOT baked in — it is configured at runtime on first launch
+# (and changeable from the tray). Optional overrides (else the bot defaults apply):
 #   CHECKIN_BASE_MIN, CHECKIN_JITTER_MIN, SHOT_BASE_MIN, SHOT_JITTER_MIN,
 #   WARNING_BEFORE_MIN, LATE_TIMEOUT_MIN, INACTIVE_TIMEOUT_MIN,
 #   INACTIVE_THRESHOLD, AUTO_END_THRESHOLD, BREAK_ALERT_MIN, EOD_TIMEOUT_MIN,
@@ -16,7 +15,6 @@
 set -euo pipefail
 
 : "${WORKER_NAME:?set WORKER_NAME}"
-: "${WEBHOOK_URL:?set WEBHOOK_URL}"
 
 # A unique 32-byte key per worker: one worker's extracted key can't open another's files.
 AES_KEY="${AES_KEY:-$(openssl rand -hex 32)}"
@@ -26,7 +24,7 @@ LD="-s -w"
 add() { [ -n "${2:-}" ] && LD="$LD -X '$P.$1=$2'"; }
 
 add WorkerName "$WORKER_NAME"
-add WebhookURL "$WEBHOOK_URL"
+add WebhookURL "${WEBHOOK_URL:-}"
 add AESKeyHex  "$AES_KEY"
 add CheckInBaseMin    "${CHECKIN_BASE_MIN:-}"
 add CheckInJitterMin  "${CHECKIN_JITTER_MIN:-}"

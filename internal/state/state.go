@@ -34,6 +34,7 @@ type State struct {
 	Updates    []Update `json:"updates"`
 	OnBreak    bool     `json:"on_break"`
 	BreakStart int64    `json:"break_start"`
+	WebhookURL string   `json:"webhook_url,omitempty"` // runtime override; empty => compile-time default
 
 	path string
 }

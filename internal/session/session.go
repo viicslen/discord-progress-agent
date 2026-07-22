@@ -55,7 +55,8 @@ const (
 )
 
 type Config struct {
-	WorkerName string
+	WorkerName     string
+	DefaultWebhook string // compile-time webhook; overridden by state.WebhookURL if set
 
 	CheckInBase   time.Duration
 	CheckInJitter time.Duration
@@ -288,6 +289,28 @@ func (e *Engine) Submit(content string) {
 		e.missed = 0
 		_ = e.st.Save()
 	}
+}
+
+// ---- webhook (runtime, ungated) ----
+
+// Webhook returns the effective webhook: the runtime override if set, else the
+// compile-time default.
+func (e *Engine) Webhook() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.st.WebhookURL != "" {
+		return e.st.WebhookURL
+	}
+	return e.cfg.DefaultWebhook
+}
+
+// SetWebhook changes the webhook at runtime and persists it (encrypted) so it
+// survives restarts. Queued items drain to the new URL from the next send on.
+func (e *Engine) SetWebhook(url string) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.st.WebhookURL = url
+	_ = e.st.Save()
 }
 
 // ---- breaks ----

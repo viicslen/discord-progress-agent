@@ -70,6 +70,30 @@ func (u *UI) Prompt(title, body string) {
 	})
 }
 
+// ShowForm opens a one-off input window (its own callback), separate from the
+// status-update window so its submission is not logged as an update. Used for
+// the runtime webhook editor.
+func (u *UI) ShowForm(title, prompt, initial string, onSubmit func(string)) {
+	fyne.Do(func() {
+		w := u.App.NewWindow(title)
+		label := widget.NewLabel(prompt)
+		label.Wrapping = fyne.TextWrapWord
+		entry := widget.NewEntry()
+		entry.SetText(initial)
+		save := widget.NewButton("Save", func() {
+			text := entry.Text
+			w.Close()
+			if onSubmit != nil {
+				onSubmit(text)
+			}
+		})
+		w.SetContent(container.NewBorder(label, save, nil, nil, entry))
+		w.Resize(fyne.NewSize(480, 180))
+		w.Show()
+		w.RequestFocus()
+	})
+}
+
 // ShowConsent displays the first-run consent gate. onAccept runs on "I Agree";
 // "Decline" (or closing) quits the app so nothing is ever captured.
 func (u *UI) ShowConsent(workerName string, onAccept func()) {

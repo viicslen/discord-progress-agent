@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -33,8 +34,8 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags)
 
-	if settings.WorkerName == "" || settings.WebhookURL == "" {
-		log.Fatal("built without WorkerName/WebhookURL — see build.sh")
+	if settings.WorkerName == "" {
+		log.Fatal("built without WorkerName — see build.sh")
 	}
 	key, err := hex.DecodeString(settings.AESKeyHex)
 	if err != nil {
@@ -55,6 +56,10 @@ func main() {
 	}
 	shotsDir := filepath.Join(dir, "shots")
 
+	if settings.WebhookURL == "" && st.WebhookURL == "" {
+		log.Print("no webhook configured — items will queue until one is set via the tray")
+	}
+
 	a := app.New()
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -69,7 +74,16 @@ func main() {
 		eng = session.New(engineConfig(shotsDir), u, st, q, func() {})
 		setupTray(a, eng, u, cancel)
 		go eng.Run(ctx)
-		go drainLoop(ctx, q)
+		go drainLoop(ctx, q, eng)
+		// No webhook yet (first run, or never configured) → ask for one. Items
+		// keep queuing until it's set, so this is non-blocking.
+		if eng.Webhook() == "" {
+			u.ShowForm("Configure webhook", "Enter the Discord webhook URL to send this worker's activity to:", "", func(url string) {
+				if url = strings.TrimSpace(url); url != "" {
+					eng.SetWebhook(url)
+				}
+			})
+		}
 	}
 
 	if !st.Consent {
@@ -92,6 +106,7 @@ func main() {
 func engineConfig(shotsDir string) session.Config {
 	return session.Config{
 		WorkerName:        settings.WorkerName,
+		DefaultWebhook:    settings.WebhookURL,
 		CheckInBase:       settings.CheckInBase,
 		CheckInJitter:     settings.CheckInJitter,
 		ShotBase:          settings.ShotBase,
@@ -115,6 +130,13 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 	}
 	m := fyne.NewMenu("Session Agent",
 		fyne.NewMenuItem("Add update…", func() { u.Prompt("Update", "What are you working on?") }),
+		fyne.NewMenuItem("Change webhook…", func() {
+			u.ShowForm("Change webhook", "New Discord webhook URL:", eng.Webhook(), func(url string) {
+				if url = strings.TrimSpace(url); url != "" {
+					eng.SetWebhook(url)
+				}
+			})
+		}),
 		fyne.NewMenuItem("Start break", func() { eng.StartBreak() }),
 		fyne.NewMenuItem("End break", func() { eng.EndBreak() }),
 		fyne.NewMenuItem("End session", func() { eng.EndSession() }),
@@ -126,10 +148,18 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 	desk.SetSystemTrayMenu(m)
 }
 
-// drainLoop sends queued items to the webhook every 30s (and once at startup).
-func drainLoop(ctx context.Context, q *queue.Queue) {
-	send := func(it queue.Item) error { return sendItem(it) }
-	q.Drain(send)
+// drainLoop sends queued items to the current webhook every 30s (and once at
+// startup). The URL is read live from the engine each cycle so a runtime change
+// takes effect immediately.
+func drainLoop(ctx context.Context, q *queue.Queue, eng *session.Engine) {
+	drain := func() {
+		url := eng.Webhook()
+		if url == "" {
+			return // nothing configured yet; keep items queued
+		}
+		q.Drain(func(it queue.Item) error { return sendItem(url, it) })
+	}
+	drain()
 	t := time.NewTicker(30 * time.Second)
 	defer t.Stop()
 	for {
@@ -137,12 +167,12 @@ func drainLoop(ctx context.Context, q *queue.Queue) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			q.Drain(send)
+			drain()
 		}
 	}
 }
 
-func sendItem(it queue.Item) error {
+func sendItem(url string, it queue.Item) error {
 	switch {
 	case it.ImagePath != "":
 		if !verifySHA(it.ImagePath, it.ImageSHA) {
@@ -155,9 +185,9 @@ func sendItem(it queue.Item) error {
 			Color:       it.Color,
 			Timestamp:   discord.RFC3339Now(),
 		}
-		return discord.SendImage(settings.WebhookURL, it.Filename, it.ImagePath, e)
+		return discord.SendImage(url, it.Filename, it.ImagePath, e)
 	case it.Embed != nil:
-		return discord.SendEmbed(settings.WebhookURL, *it.Embed)
+		return discord.SendEmbed(url, *it.Embed)
 	default:
 		e := discord.Embed{
 			Title:       it.Title,
@@ -165,7 +195,7 @@ func sendItem(it queue.Item) error {
 			Color:       it.Color,
 			Timestamp:   discord.RFC3339Now(),
 		}
-		return discord.SendEmbed(settings.WebhookURL, e)
+		return discord.SendEmbed(url, e)
 	}
 }
 
