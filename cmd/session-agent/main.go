@@ -165,17 +165,22 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 		eng.EndSession()
 		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
 	})
+	quitItem := fyne.NewMenuItem("Quit", func() {
+		cancel()
+		a.Quit()
+	})
 	m := fyne.NewMenu("Session Agent",
 		addUpdate,
-		settingsItem,
-		startBreak,
-		endBreak,
+		fyne.NewMenuItemSeparator(),
 		startSession,
 		endSession,
-		fyne.NewMenuItem("Quit", func() {
-			cancel()
-			a.Quit()
-		}),
+		fyne.NewMenuItemSeparator(),
+		startBreak,
+		endBreak,
+		fyne.NewMenuItemSeparator(),
+		settingsItem,
+		fyne.NewMenuItemSeparator(),
+		quitItem,
 	)
 	refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
 	desk.SetSystemTrayMenu(m)
