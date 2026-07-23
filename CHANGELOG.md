@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/viicslen/discord-progress-agent/compare/v0.2.1...v0.3.0) (2026-07-23)
+
+
+### Features
+
+* add tray action to start a new session ([221cbae](https://github.com/viicslen/discord-progress-agent/commit/221cbaeb0ae83f4219784fc23fee8507d9301cd5))
+
+
+### Bug Fixes
+
+* keep Linux window titles stable ([a15f094](https://github.com/viicslen/discord-progress-agent/commit/a15f0948552fdd277c83b4010b1abf5ca987826c))
+
 ## [0.2.1](https://github.com/viicslen/discord-progress-agent/compare/v0.2.0...v0.2.1) (2026-07-22)
 
 
