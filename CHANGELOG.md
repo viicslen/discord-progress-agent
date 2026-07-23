@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/viicslen/discord-progress-agent/compare/v0.3.0...v0.4.0) (2026-07-23)
+
+
+### Features
+
+* combine runtime settings into one window ([fc592d2](https://github.com/viicslen/discord-progress-agent/commit/fc592d2a05deeddabe6f02bf7b4be2c1ff292fba))
+* disable tray actions by session state ([b003071](https://github.com/viicslen/discord-progress-agent/commit/b003071d07ca80eefce544da31f087d5fbc438e5))
+
 ## [0.3.0](https://github.com/viicslen/discord-progress-agent/compare/v0.2.1...v0.3.0) (2026-07-23)
 
 
