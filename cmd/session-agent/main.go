@@ -134,32 +134,66 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 		return
 	}
 	desk.SetSystemTrayIcon(appIconResource())
+	var addUpdate, startBreak, endBreak, startSession, endSession *fyne.MenuItem
+	addUpdate = fyne.NewMenuItem("Add update…", func() { u.Prompt("Update", "What are you working on?") })
+	changeWebhook := fyne.NewMenuItem("Change webhook…", func() {
+		u.ShowForm("Change webhook", "New Discord webhook URL:", eng.Webhook(), func(url string) {
+			if url = strings.TrimSpace(url); url != "" {
+				eng.SetWebhook(url)
+			}
+		})
+	})
+	changeName := fyne.NewMenuItem("Change name…", func() {
+		u.ShowForm("Change name", "Worker name shown in Discord:", eng.Name(), func(name string) {
+			if name = strings.TrimSpace(name); name != "" {
+				eng.SetName(name)
+			}
+		})
+	})
+	startBreak = fyne.NewMenuItem("Start break", func() {
+		eng.StartBreak()
+		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+	})
+	endBreak = fyne.NewMenuItem("End break", func() {
+		eng.EndBreak()
+		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+	})
+	startSession = fyne.NewMenuItem("Start session", func() {
+		eng.StartSession()
+		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+	})
+	endSession = fyne.NewMenuItem("End session", func() {
+		eng.EndSession()
+		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+	})
 	m := fyne.NewMenu("Session Agent",
-		fyne.NewMenuItem("Add update…", func() { u.Prompt("Update", "What are you working on?") }),
-		fyne.NewMenuItem("Change webhook…", func() {
-			u.ShowForm("Change webhook", "New Discord webhook URL:", eng.Webhook(), func(url string) {
-				if url = strings.TrimSpace(url); url != "" {
-					eng.SetWebhook(url)
-				}
-			})
-		}),
-		fyne.NewMenuItem("Change name…", func() {
-			u.ShowForm("Change name", "Worker name shown in Discord:", eng.Name(), func(name string) {
-				if name = strings.TrimSpace(name); name != "" {
-					eng.SetName(name)
-				}
-			})
-		}),
-		fyne.NewMenuItem("Start break", func() { eng.StartBreak() }),
-		fyne.NewMenuItem("End break", func() { eng.EndBreak() }),
-		fyne.NewMenuItem("Start session", func() { eng.StartSession() }),
-		fyne.NewMenuItem("End session", func() { eng.EndSession() }),
+		addUpdate,
+		changeWebhook,
+		changeName,
+		startBreak,
+		endBreak,
+		startSession,
+		endSession,
 		fyne.NewMenuItem("Quit", func() {
 			cancel()
 			a.Quit()
 		}),
 	)
+	refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
 	desk.SetSystemTrayMenu(m)
+}
+
+func refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession *fyne.MenuItem, eng *session.Engine) {
+	s := eng.Snapshot()
+	active := s.Active
+	onBreak := s.OnBreak
+	pending := s.Pending
+
+	addUpdate.Disabled = !active || pending
+	startBreak.Disabled = !active || onBreak || pending
+	endBreak.Disabled = !active || !onBreak
+	startSession.Disabled = active || pending
+	endSession.Disabled = !active || pending
 }
 
 // drainLoop sends queued items to the current webhook every 30s (and once at

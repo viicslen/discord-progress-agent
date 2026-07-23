@@ -107,6 +107,12 @@ type Engine struct {
 	closed   bool
 }
 
+type Snapshot struct {
+	Active  bool
+	OnBreak bool
+	Pending bool
+}
+
 func New(cfg Config, ui UI, st *state.State, q *queue.Queue, onEnd func()) *Engine {
 	return &Engine{
 		cfg: cfg, ui: ui, st: st, q: q, onEnd: onEnd,
@@ -306,6 +312,16 @@ func (e *Engine) Name() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.nameLocked()
+}
+
+func (e *Engine) Snapshot() Snapshot {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return Snapshot{
+		Active:  !e.closed,
+		OnBreak: e.st.OnBreak,
+		Pending: e.pend != pendingNone,
+	}
 }
 
 // SetName changes the worker name at runtime and persists it (encrypted).
