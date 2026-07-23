@@ -165,7 +165,10 @@ func TestBreakPausesCapture(t *testing.T) {
 
 func TestStartSessionReopensFinalizedEngine(t *testing.T) {
 	done := make(chan struct{}, 1)
-	e, q, st := newEngine(t, Config{}, func() { done <- struct{}{} })
+	// Large bases: StartSession re-arms the timers, and a zero interval would
+	// fire (and reschedule) immediately, racing the assertions below.
+	cfg := Config{CheckInBase: 10 * time.Second, ShotBase: 10 * time.Second}
+	e, q, st := newEngine(t, cfg, func() { done <- struct{}{} })
 
 	e.missed = 3
 	e.mu.Lock()
