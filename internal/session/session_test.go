@@ -79,6 +79,31 @@ func TestEscalationToAutoEnd(t *testing.T) {
 	}
 }
 
+// Auto-end takes a final screenshot too.
+func TestAutoEndCaptures(t *testing.T) {
+	shot := make(chan struct{}, 1)
+	cfg := Config{
+		CheckInBase:       10 * time.Second,
+		LateTimeout:       40 * time.Millisecond,
+		WarningBefore:     15 * time.Millisecond,
+		InactiveTO:        20 * time.Millisecond,
+		InactiveThreshold: 1,
+		AutoEndThreshold:  1,
+		CaptureFn: func() ([]Shot, error) {
+			shot <- struct{}{}
+			return nil, nil
+		},
+	}
+	e, _, _ := newEngine(t, cfg, func() {})
+
+	e.fireCheckIn() // never answered → escalates to auto-end
+	select {
+	case <-shot:
+	case <-time.After(2 * time.Second):
+		t.Fatal("auto-end should take a final screenshot")
+	}
+}
+
 func TestAnswerResetsMissed(t *testing.T) {
 	cfg := Config{
 		CheckInBase:       10 * time.Second,
@@ -160,6 +185,28 @@ func TestBreakPausesCapture(t *testing.T) {
 	e.fireShot() // now capture should run
 	if captures != 1 {
 		t.Fatalf("capture should run after break ended: %d", captures)
+	}
+}
+
+// EndSession takes a final screenshot of the working state.
+func TestEndSessionCaptures(t *testing.T) {
+	done := make(chan struct{}, 1)
+	cfg := Config{
+		CheckInBase: 10 * time.Second,
+		ShotBase:    10 * time.Second,
+		EODTimeout:  10 * time.Second,
+		CaptureFn: func() ([]Shot, error) {
+			done <- struct{}{}
+			return nil, nil
+		},
+	}
+	e, _, _ := newEngine(t, cfg, func() {})
+
+	e.EndSession() // async final capture
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("EndSession should take a final screenshot")
 	}
 }
 

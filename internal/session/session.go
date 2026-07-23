@@ -252,6 +252,9 @@ func (e *Engine) fireInactive(c int64) {
 		au := e.st.Append("auto_end", state.StatusMissed, updAutoEnded, time.Now().Unix())
 		e.postUpdate(au)
 		e.ui.Notify("Session ended", msgAutoEnded)
+		// Final screenshot, like EndSession. The EOD-timeout path is already
+		// covered by EndSession's shot; auto-end is the only other way out.
+		go e.captureAndEnqueue()
 		e.finalizeLocked()
 	}
 }
@@ -457,6 +460,10 @@ func (e *Engine) EndSession() {
 	if e.breakT != nil {
 		e.breakT.Stop()
 	}
+	// Final screenshot of the working state as the session ends. Async so the
+	// (slow) capture doesn't block the EOD prompt; captureAndEnqueue won't
+	// re-arm the shot timer we just stopped.
+	go e.captureAndEnqueue()
 	e.pend = pendingEOD
 	e.ui.Prompt("End of day", msgAskEOD)
 	e.eodT = time.AfterFunc(e.cfg.EODTimeout, e.fireEODTimeout)
@@ -528,35 +535,48 @@ func (e *Engine) buildReport() discord.Embed {
 
 func (e *Engine) fireShot() {
 	e.mu.Lock()
-	onBreak := e.st.OnBreak
-	closed := e.closed
-	fn := e.cfg.CaptureFn
-	name := e.nameLocked()
+	skip := e.closed || e.st.OnBreak
 	e.mu.Unlock()
 
-	if !closed && !onBreak && fn != nil {
-		shots, err := fn()
-		if err != nil {
-			log.Printf("capture: %v (treated as unavailable)", err)
-		}
-		for _, s := range shots {
-			e.mu.Lock()
-			seq := e.st.Take()
-			_ = e.st.Save()
-			e.mu.Unlock()
-			_ = e.q.Add(queue.Item{
-				Seq: seq, Timestamp: time.Now().Unix(), Kind: "screenshot",
-				Title:     "Screenshot: " + name,
-				Content:   fmt.Sprintf("seq %d", seq),
-				ImagePath: s.Path, ImageSHA: s.SHA, Filename: s.Name,
-			})
-		}
+	if !skip {
+		e.captureAndEnqueue()
 	}
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if !e.closed && !e.st.OnBreak {
 		e.scheduleShotLocked()
+	}
+}
+
+// captureAndEnqueue grabs screenshots via CaptureFn and queues them. The (slow)
+// capture runs unlocked; only the config/state reads and seq allocation hold mu.
+// It neither reschedules nor gates on closed/break, so it also serves the final
+// end-of-session shot (see EndSession).
+func (e *Engine) captureAndEnqueue() {
+	e.mu.Lock()
+	fn := e.cfg.CaptureFn
+	name := e.nameLocked()
+	e.mu.Unlock()
+	if fn == nil {
+		return
+	}
+
+	shots, err := fn()
+	if err != nil {
+		log.Printf("capture: %v (treated as unavailable)", err)
+	}
+	for _, s := range shots {
+		e.mu.Lock()
+		seq := e.st.Take()
+		_ = e.st.Save()
+		e.mu.Unlock()
+		_ = e.q.Add(queue.Item{
+			Seq: seq, Timestamp: time.Now().Unix(), Kind: "screenshot",
+			Title:     "Screenshot: " + name,
+			Content:   fmt.Sprintf("seq %d", seq),
+			ImagePath: s.Path, ImageSHA: s.SHA, Filename: s.Name,
+		})
 	}
 }
 

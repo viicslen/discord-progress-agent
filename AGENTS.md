@@ -128,7 +128,11 @@ list in sync when you introduce or rename a concept.
   (queue items add `checkin | warning | break_alert | screenshot | report`).
 - **Status** — `ontime | late | missed`; drives the report emoji (✅/⚠️/❌).
 - **Check-in** — a periodic prompt ("What are you working on?"). Fired by the
-  engine on a jittered timer; the worker answers via the input window.
+  engine on a jittered timer; the worker answers via the input window. A session
+  start (app launch or tray **Start session**) fires the first check-in and
+  screenshot immediately (`startCyclesLocked`); ending a break resumes
+  mid-interval instead. A session *end* also takes one final screenshot
+  (`captureAndEnqueue`): at tray **End session** click, or at auto-end.
 - **Cycle** — one check-in and its escalation window. `Engine.cycle` increments
   each check-in; warning/late/inactive timers capture their cycle number and
   no-op if it's stale (superseded or answered).
