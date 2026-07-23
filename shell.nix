@@ -6,6 +6,7 @@ pkgs.mkShell {
     gcc
     pkg-config
     git
+    openssl
 
     # Fyne (CGO) build deps: OpenGL + X11 headers/libs.
     libGL
