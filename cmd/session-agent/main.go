@@ -69,6 +69,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var eng *session.Engine
+	var refreshTray func()
 	u := ui.New(a, func(text string) {
 		if eng != nil {
 			eng.Submit(text)
@@ -76,8 +77,16 @@ func main() {
 	})
 
 	start := func() {
-		eng = session.New(engineConfig(shotsDir), u, st, q, func() {})
-		setupTray(a, eng, u, cancel)
+		// The session finalizes asynchronously (EOD flow, EOD timeout, auto-end),
+		// so the tray has to be re-enabled from the engine's end hook.
+		eng = session.New(engineConfig(shotsDir), u, st, q, func() {
+			fyne.Do(func() {
+				if refreshTray != nil {
+					refreshTray()
+				}
+			})
+		})
+		refreshTray = setupTray(a, eng, u, cancel)
 		go eng.Run(ctx)
 		go drainLoop(ctx, q, eng)
 		// No webhook yet (first run, or never configured) → ask for one. Items
@@ -131,13 +140,29 @@ func engineConfig(shotsDir string) session.Config {
 	}
 }
 
-func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelFunc) {
+// setupTray builds the tray menu and returns a refresh func that syncs the menu
+// with the engine state. Callers must invoke it on the main thread.
+func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelFunc) func() {
 	desk, ok := a.(desktop.App)
 	if !ok {
-		return
+		return nil
 	}
 	desk.SetSystemTrayIcon(appIconResource())
+
+	var m *fyne.Menu
 	var addUpdate, startBreak, endBreak, startSession, endSession *fyne.MenuItem
+	// Mutating MenuItem.Disabled has no visual effect on its own — the menu has
+	// to be pushed back to the system tray, which is what Menu.Refresh does.
+	refresh := func() {
+		s := eng.Snapshot()
+		addUpdate.Disabled = !s.Active || s.Pending
+		startBreak.Disabled = !s.Active || s.OnBreak || s.Pending
+		endBreak.Disabled = !s.Active || !s.OnBreak
+		startSession.Disabled = s.Active || s.Pending
+		endSession.Disabled = !s.Active || s.Pending
+		m.Refresh()
+	}
+
 	addUpdate = fyne.NewMenuItem("Add update…", func() { u.Prompt("Update", "What are you working on?") })
 	settingsItem := fyne.NewMenuItem("Settings…", func() {
 		u.ShowSettings(eng.Name(), eng.Webhook(), func(name, webhook string) {
@@ -151,25 +176,25 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 	})
 	startBreak = fyne.NewMenuItem("Start break", func() {
 		eng.StartBreak()
-		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+		refresh()
 	})
 	endBreak = fyne.NewMenuItem("End break", func() {
 		eng.EndBreak()
-		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+		refresh()
 	})
 	startSession = fyne.NewMenuItem("Start session", func() {
 		eng.StartSession()
-		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+		refresh()
 	})
 	endSession = fyne.NewMenuItem("End session", func() {
 		eng.EndSession()
-		refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+		refresh()
 	})
 	quitItem := fyne.NewMenuItem("Quit", func() {
 		cancel()
 		a.Quit()
 	})
-	m := fyne.NewMenu("Session Agent",
+	m = fyne.NewMenu("Session Agent",
 		addUpdate,
 		fyne.NewMenuItemSeparator(),
 		startSession,
@@ -182,21 +207,9 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 		fyne.NewMenuItemSeparator(),
 		quitItem,
 	)
-	refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession, eng)
+	refresh() // m isn't the tray menu yet, so this only sets the flags…
 	desk.SetSystemTrayMenu(m)
-}
-
-func refreshTrayState(addUpdate, startBreak, endBreak, startSession, endSession *fyne.MenuItem, eng *session.Engine) {
-	s := eng.Snapshot()
-	active := s.Active
-	onBreak := s.OnBreak
-	pending := s.Pending
-
-	addUpdate.Disabled = !active || pending
-	startBreak.Disabled = !active || onBreak || pending
-	endBreak.Disabled = !active || !onBreak
-	startSession.Disabled = active || pending
-	endSession.Disabled = !active || pending
+	return refresh
 }
 
 // drainLoop sends queued items to the current webhook every 30s (and once at
