@@ -152,6 +152,7 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 		}),
 		fyne.NewMenuItem("Start break", func() { eng.StartBreak() }),
 		fyne.NewMenuItem("End break", func() { eng.EndBreak() }),
+		fyne.NewMenuItem("Start session", func() { eng.StartSession() }),
 		fyne.NewMenuItem("End session", func() { eng.EndSession() }),
 		fyne.NewMenuItem("Quit", func() {
 			cancel()

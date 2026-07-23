@@ -162,3 +162,48 @@ func TestBreakPausesCapture(t *testing.T) {
 		t.Fatalf("capture should run after break ended: %d", captures)
 	}
 }
+
+func TestStartSessionReopensFinalizedEngine(t *testing.T) {
+	done := make(chan struct{}, 1)
+	e, q, st := newEngine(t, Config{}, func() { done <- struct{}{} })
+
+	e.missed = 3
+	e.mu.Lock()
+	e.finalizeLocked()
+	e.mu.Unlock()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("finalize should invoke onEnd")
+	}
+
+	if !e.closed {
+		t.Fatal("engine should be closed after finalize")
+	}
+	if st.SessionID != 2 {
+		t.Fatalf("session id = %d, want 2", st.SessionID)
+	}
+	if len(st.Updates) != 0 {
+		t.Fatalf("updates should be cleared after finalize, got %d", len(st.Updates))
+	}
+
+	if !e.StartSession() {
+		t.Fatal("StartSession should reopen a finalized engine")
+	}
+	if e.closed {
+		t.Fatal("engine should be open after StartSession")
+	}
+	if e.missed != 0 {
+		t.Fatalf("missed should reset for the new session, got %d", e.missed)
+	}
+	if e.StartSession() {
+		t.Fatal("StartSession should fail while a session is already active")
+	}
+
+	e.Submit("back to work")
+	got := kinds(q)
+	if len(got) != 2 || got[1] != "plan" {
+		t.Fatalf("expected report then new session plan, got %v", got)
+	}
+}

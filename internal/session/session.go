@@ -376,6 +376,31 @@ func (e *Engine) EndBreak() {
 	e.scheduleShotLocked()
 }
 
+// StartSession re-arms a finalized engine so a new session can begin from the
+// tray without restarting the app. It returns false if a session is already
+// active or an end-of-day flow is still pending.
+func (e *Engine) StartSession() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !e.closed || e.pend != pendingNone {
+		return false
+	}
+
+	e.closed = false
+	e.answered = false
+	e.missed = 0
+	e.breakN = 0
+
+	if e.st.OnBreak {
+		e.startBreakTimerLocked()
+	} else {
+		e.scheduleCheckInLocked()
+		e.scheduleShotLocked()
+	}
+
+	return true
+}
+
 func (e *Engine) fireBreakAlert() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -424,8 +449,8 @@ func (e *Engine) fireEODTimeout() {
 	e.finalizeLocked()
 }
 
-// finalizeLocked builds and enqueues the report, resets for the next session,
-// and calls onEnd. Caller holds mu.
+// finalizeLocked builds and enqueues the report, resets the persisted state for
+// the next session, and calls onEnd. Caller holds mu.
 func (e *Engine) finalizeLocked() {
 	report := e.buildReport()
 	seq := e.st.Take()
