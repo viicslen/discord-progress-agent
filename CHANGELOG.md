@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/viicslen/discord-progress-agent/compare/v0.4.0...v0.5.0) (2026-07-23)
+
+
+### Features
+
+* reorder tray menu with separators ([fb71632](https://github.com/viicslen/discord-progress-agent/commit/fb71632cd2fb5837b8cd17accc6763fa68a19102))
+
+
+### Bug Fixes
+
+* re-enable tray items after a session ends ([d378ab3](https://github.com/viicslen/discord-progress-agent/commit/d378ab3f570613284c562c95e7e740088274d0f7))
+
 ## [0.4.0](https://github.com/viicslen/discord-progress-agent/compare/v0.3.0...v0.4.0) (2026-07-23)
 
 
