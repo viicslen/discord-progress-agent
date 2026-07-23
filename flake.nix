@@ -13,7 +13,7 @@
         lib = pkgs.lib;
 
         # Bumped automatically by release-please (see release-please-config.json).
-        version = "0.5.0"; # x-release-please-version
+        version = "0.5.1"; # x-release-please-version
 
         # Fyne (CGO) runtime/build deps.
         guiDeps = with pkgs; [
