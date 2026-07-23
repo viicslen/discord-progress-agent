@@ -210,3 +210,23 @@ func TestStartSessionReopensFinalizedEngine(t *testing.T) {
 		t.Fatalf("expected report then new session plan, got %v", got)
 	}
 }
+
+// Ending a session while on a break must not leave OnBreak persisted, or the
+// next launch resumes a phantom break with no check-ins/screenshots.
+func TestFinalizeClearsBreak(t *testing.T) {
+	cfg := Config{CheckInBase: 10 * time.Second, ShotBase: 10 * time.Second, BreakAlert: 10 * time.Second}
+	e, _, st := newEngine(t, cfg, func() {})
+
+	e.StartBreak()
+	if !st.OnBreak {
+		t.Fatal("break should be active")
+	}
+
+	e.mu.Lock()
+	e.finalizeLocked()
+	e.mu.Unlock()
+
+	if st.OnBreak || st.BreakStart != 0 {
+		t.Fatalf("break state should be cleared after finalize: OnBreak=%v BreakStart=%d", st.OnBreak, st.BreakStart)
+	}
+}

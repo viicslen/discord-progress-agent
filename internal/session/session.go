@@ -473,9 +473,14 @@ func (e *Engine) finalizeLocked() {
 	_ = e.q.Add(queue.Item{Seq: seq, Timestamp: time.Now().Unix(), Kind: "report", Embed: &report})
 	e.ui.Notify("Session ended", msgSessionEnded)
 
-	// Reset for a fresh session; NextSeq is never rewound.
+	// Reset for a fresh session; NextSeq is never rewound. Clearing the break
+	// flags matters: ending a session while on a break would otherwise persist
+	// OnBreak, and the next launch would resume a phantom break (no check-ins or
+	// screenshots) instead of starting clean.
 	e.st.Updates = nil
 	e.st.SessionID++
+	e.st.OnBreak = false
+	e.st.BreakStart = 0
 	e.pend = pendingNone
 	e.closed = true
 	e.stopAllLocked()
