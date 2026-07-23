@@ -73,6 +73,7 @@ nix develop
 - `Change name…`
 - `Start break`
 - `End break`
+- `Start session`
 - `End session`
 - `Quit`
 
@@ -216,6 +217,9 @@ Wayland requirements:
 
 Capture failure is treated as a normal unavailable state. It is logged, but it
 does not crash the app.
+
+On Linux, the prompt/settings/consent windows keep stable native titles so window
+managers can target them with rules more reliably.
 
 ## Build And Release
 

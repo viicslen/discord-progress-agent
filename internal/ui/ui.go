@@ -22,11 +22,16 @@ Screenshots pause while you are on a break. Nothing is captured or sent unless
 you agree below. If you do not consent, the app will close and record nothing.`
 
 type UI struct {
-	App      fyne.App
-	input    fyne.Window
-	entry    *widget.Entry
-	prompt   *widget.Label
-	onSubmit func(string)
+	App        fyne.App
+	input      fyne.Window
+	entry      *widget.Entry
+	prompt     *widget.Label
+	form       fyne.Window
+	formBody   *widget.Label
+	formEntry  *widget.Entry
+	formSave   *widget.Button
+	formSubmit func(string)
+	onSubmit   func(string)
 }
 
 // New builds the UI and its (hidden) input window. onSubmit is invoked with the
@@ -39,7 +44,7 @@ func New(app fyne.App, onSubmit func(string)) *UI {
 	u.prompt = widget.NewLabel("")
 	u.prompt.Wrapping = fyne.TextWrapWord
 
-	w := app.NewWindow("Status update")
+	w := app.NewWindow("Session Agent")
 	send := widget.NewButton("Send", func() {
 		text := u.entry.Text
 		u.entry.SetText("")
@@ -52,6 +57,23 @@ func New(app fyne.App, onSubmit func(string)) *UI {
 	w.Resize(fyne.NewSize(420, 220))
 	w.SetCloseIntercept(func() { w.Hide() }) // closing hides, never quits
 	u.input = w
+
+	u.formBody = widget.NewLabel("")
+	u.formBody.Wrapping = fyne.TextWrapWord
+	u.formEntry = widget.NewEntry()
+	u.formSave = widget.NewButton("Save", func() {
+		text := u.formEntry.Text
+		u.formEntry.SetText("")
+		u.form.Hide()
+		if u.formSubmit != nil {
+			u.formSubmit(text)
+		}
+	})
+
+	u.form = app.NewWindow("Session Agent Settings")
+	u.form.SetContent(container.NewBorder(u.formBody, u.formSave, nil, nil, u.formEntry))
+	u.form.Resize(fyne.NewSize(480, 180))
+	u.form.SetCloseIntercept(func() { u.form.Hide() })
 	return u
 }
 
@@ -63,8 +85,8 @@ func (u *UI) Notify(title, body string) {
 // Prompt raises the input window with the given prompt text.
 func (u *UI) Prompt(title, body string) {
 	fyne.Do(func() {
-		u.input.SetTitle(title)
-		u.prompt.SetText(body)
+		u.input.SetTitle("Session Agent")
+		u.prompt.SetText(title + "\n\n" + body)
 		u.input.Show()
 		u.input.RequestFocus()
 	})
@@ -75,29 +97,19 @@ func (u *UI) Prompt(title, body string) {
 // the runtime webhook editor.
 func (u *UI) ShowForm(title, prompt, initial string, onSubmit func(string)) {
 	fyne.Do(func() {
-		w := u.App.NewWindow(title)
-		label := widget.NewLabel(prompt)
-		label.Wrapping = fyne.TextWrapWord
-		entry := widget.NewEntry()
-		entry.SetText(initial)
-		save := widget.NewButton("Save", func() {
-			text := entry.Text
-			w.Close()
-			if onSubmit != nil {
-				onSubmit(text)
-			}
-		})
-		w.SetContent(container.NewBorder(label, save, nil, nil, entry))
-		w.Resize(fyne.NewSize(480, 180))
-		w.Show()
-		w.RequestFocus()
+		u.form.SetTitle("Session Agent Settings")
+		u.formBody.SetText(title + "\n\n" + prompt)
+		u.formEntry.SetText(initial)
+		u.formSubmit = onSubmit
+		u.form.Show()
+		u.form.RequestFocus()
 	})
 }
 
 // ShowConsent displays the first-run consent gate. onAccept runs on "I Agree";
 // "Decline" (or closing) quits the app so nothing is ever captured.
 func (u *UI) ShowConsent(workerName string, onAccept func()) {
-	w := u.App.NewWindow("Consent required")
+	w := u.App.NewWindow("Session Agent Consent")
 	notice := widget.NewLabel("")
 	notice.Wrapping = fyne.TextWrapWord
 	notice.SetText(fmt.Sprintf(consentNotice, workerName))
