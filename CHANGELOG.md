@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/viicslen/discord-progress-agent/compare/v0.5.0...v0.5.1) (2026-07-23)
+
+
+### Bug Fixes
+
+* **test:** stop zero-interval timers racing the start-session test ([7a6e8a0](https://github.com/viicslen/discord-progress-agent/commit/7a6e8a0c772cc431a6e3eadf76aca48ad13e1a32))
+
 ## [0.5.0](https://github.com/viicslen/discord-progress-agent/compare/v0.4.0...v0.5.0) (2026-07-23)
 
 
