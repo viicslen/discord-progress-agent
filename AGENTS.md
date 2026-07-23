@@ -44,6 +44,8 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
 
 ### Lint
 - **Format:** `gofmt -w ./cmd ./internal` (always before committing).
+- If a change touches any `.go` file, run `gofmt` on the touched Go files before
+  committing.
 - **Vet:** `go vet ./...` (run inside the Nix shell so `ui`/`cmd` are covered).
 
 ### CI/CD (`.github/workflows/`)
@@ -113,9 +115,10 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
 Terms as used in this codebase (and mirrored from the bot where noted). Keep this
 list in sync when you introduce or rename a concept.
 
-- **Session** — one work period, from app launch (after consent) to end-of-day or
-  auto-end. `state.SessionID` increments per session; `Updates` is cleared when a
-  session finalizes. One active session at a time (single-user).
+- **Session** — one work period, from app launch (after consent) or tray
+  **Start session** to end-of-day or auto-end. `state.SessionID` increments per
+  session; `Updates` is cleared when a session finalizes. One active session at a
+  time (single-user).
 - **Update / the log** — every session event is a `state.Update` appended to the
   single `State.Updates` slice: status prompts *and* system events (breaks,
   misses, EOD report, next plan). This is "the log". Mirrors the bot's one
@@ -137,8 +140,9 @@ list in sync when you introduce or rename a concept.
   timers and emits periodic **break alerts**; ending it resumes both.
 - **EOD flow** — the two-step end-of-day exchange: prompt for the end-of-day
   report, then the next-session plan (`none`/`no` skips it), then finalize.
-- **Finalize** — build the report embed from `Updates`, enqueue it, reset for the
-  next session. `NextSeq` is never reset.
+- **Finalize** — build the report embed from `Updates`, enqueue it, reset the
+  persisted state for the next session, and close the current engine until app
+  launch or tray **Start session** re-arms it. `NextSeq` is never reset.
 - **Report** — the end-of-day Discord embed assembled from the session's updates;
   optionally appends GitHub commits as corroborating output evidence.
 - **Vault / seal / open** — `internal/vault`: AES-GCM `Seal`/`Open` + atomic
