@@ -127,8 +127,7 @@ func (e *Engine) Run(ctx context.Context) {
 		// Resume a break that was active at shutdown.
 		e.startBreakTimerLocked()
 	} else {
-		e.scheduleCheckInLocked()
-		e.scheduleShotLocked()
+		e.startCyclesLocked()
 	}
 	e.mu.Unlock()
 
@@ -159,6 +158,16 @@ func (e *Engine) scheduleCheckInLocked() {
 
 func (e *Engine) scheduleShotLocked() {
 	e.shotT = time.AfterFunc(e.jitter(e.cfg.ShotBase, e.cfg.ShotJitter), e.fireShot)
+}
+
+// startCyclesLocked kicks off a fresh session: the first check-in prompt and the
+// first screenshot fire immediately (AfterFunc 0 runs them off the mutex), then
+// each reschedules itself on the normal jittered interval. Used on app launch
+// and tray Start session so a session opens with an update prompt instead of a
+// silent hour. Ending a break resumes mid-interval instead — see EndBreak.
+func (e *Engine) startCyclesLocked() {
+	e.checkInT = time.AfterFunc(0, e.fireCheckIn)
+	e.shotT = time.AfterFunc(0, e.fireShot)
 }
 
 func (e *Engine) startBreakTimerLocked() {
@@ -410,8 +419,7 @@ func (e *Engine) StartSession() bool {
 	if e.st.OnBreak {
 		e.startBreakTimerLocked()
 	} else {
-		e.scheduleCheckInLocked()
-		e.scheduleShotLocked()
+		e.startCyclesLocked()
 	}
 
 	return true

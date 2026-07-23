@@ -165,9 +165,9 @@ func TestBreakPausesCapture(t *testing.T) {
 
 func TestStartSessionReopensFinalizedEngine(t *testing.T) {
 	done := make(chan struct{}, 1)
-	// Large bases: StartSession re-arms the timers, and a zero interval would
-	// fire (and reschedule) immediately, racing the assertions below.
-	cfg := Config{CheckInBase: 10 * time.Second, ShotBase: 10 * time.Second}
+	// StartSession fires an immediate check-in; large timeouts keep its
+	// escalation (late/inactive) from posting before Submit answers it.
+	cfg := Config{CheckInBase: 10 * time.Second, ShotBase: 10 * time.Second, LateTimeout: 10 * time.Second}
 	e, q, st := newEngine(t, cfg, func() { done <- struct{}{} })
 
 	e.missed = 3
