@@ -83,9 +83,12 @@ func main() {
 		// No webhook yet (first run, or never configured) → ask for one. Items
 		// keep queuing until it's set, so this is non-blocking.
 		if eng.Webhook() == "" {
-			u.ShowForm("Configure webhook", "Enter the Discord webhook URL to send this worker's activity to:", "", func(url string) {
-				if url = strings.TrimSpace(url); url != "" {
-					eng.SetWebhook(url)
+			u.ShowSettings(eng.Name(), "", func(name, webhook string) {
+				if name = strings.TrimSpace(name); name != "" {
+					eng.SetName(name)
+				}
+				if webhook = strings.TrimSpace(webhook); webhook != "" {
+					eng.SetWebhook(webhook)
 				}
 			})
 		}
@@ -136,17 +139,13 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 	desk.SetSystemTrayIcon(appIconResource())
 	var addUpdate, startBreak, endBreak, startSession, endSession *fyne.MenuItem
 	addUpdate = fyne.NewMenuItem("Add update…", func() { u.Prompt("Update", "What are you working on?") })
-	changeWebhook := fyne.NewMenuItem("Change webhook…", func() {
-		u.ShowForm("Change webhook", "New Discord webhook URL:", eng.Webhook(), func(url string) {
-			if url = strings.TrimSpace(url); url != "" {
-				eng.SetWebhook(url)
-			}
-		})
-	})
-	changeName := fyne.NewMenuItem("Change name…", func() {
-		u.ShowForm("Change name", "Worker name shown in Discord:", eng.Name(), func(name string) {
+	settingsItem := fyne.NewMenuItem("Settings…", func() {
+		u.ShowSettings(eng.Name(), eng.Webhook(), func(name, webhook string) {
 			if name = strings.TrimSpace(name); name != "" {
 				eng.SetName(name)
+			}
+			if webhook = strings.TrimSpace(webhook); webhook != "" {
+				eng.SetWebhook(webhook)
 			}
 		})
 	})
@@ -168,8 +167,7 @@ func setupTray(a fyne.App, eng *session.Engine, u *ui.UI, cancel context.CancelF
 	})
 	m := fyne.NewMenu("Session Agent",
 		addUpdate,
-		changeWebhook,
-		changeName,
+		settingsItem,
 		startBreak,
 		endBreak,
 		startSession,

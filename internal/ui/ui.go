@@ -22,16 +22,14 @@ Screenshots pause while you are on a break. Nothing is captured or sent unless
 you agree below. If you do not consent, the app will close and record nothing.`
 
 type UI struct {
-	App        fyne.App
-	input      fyne.Window
-	entry      *widget.Entry
-	prompt     *widget.Label
-	form       fyne.Window
-	formBody   *widget.Label
-	formEntry  *widget.Entry
-	formSave   *widget.Button
-	formSubmit func(string)
-	onSubmit   func(string)
+	App             fyne.App
+	input           fyne.Window
+	entry           *widget.Entry
+	prompt          *widget.Label
+	settings        fyne.Window
+	settingsName    *widget.Entry
+	settingsWebhook *widget.Entry
+	onSubmit        func(string)
 }
 
 // New builds the UI and its (hidden) input window. onSubmit is invoked with the
@@ -58,22 +56,25 @@ func New(app fyne.App, onSubmit func(string)) *UI {
 	w.SetCloseIntercept(func() { w.Hide() }) // closing hides, never quits
 	u.input = w
 
-	u.formBody = widget.NewLabel("")
-	u.formBody.Wrapping = fyne.TextWrapWord
-	u.formEntry = widget.NewEntry()
-	u.formSave = widget.NewButton("Save", func() {
-		text := u.formEntry.Text
-		u.formEntry.SetText("")
-		u.form.Hide()
-		if u.formSubmit != nil {
-			u.formSubmit(text)
-		}
-	})
+	settingsTitle := widget.NewLabel("Settings")
+	settingsTitle.Wrapping = fyne.TextWrapWord
+	nameLabel := widget.NewLabel("Worker name")
+	webhookLabel := widget.NewLabel("Discord webhook URL")
+	u.settingsName = widget.NewEntry()
+	u.settingsWebhook = widget.NewEntry()
+	saveSettings := widget.NewButton("Save", func() {})
 
-	u.form = app.NewWindow("Session Agent Settings")
-	u.form.SetContent(container.NewBorder(u.formBody, u.formSave, nil, nil, u.formEntry))
-	u.form.Resize(fyne.NewSize(480, 180))
-	u.form.SetCloseIntercept(func() { u.form.Hide() })
+	u.settings = app.NewWindow("Session Agent Settings")
+	u.settings.SetContent(container.NewVBox(
+		settingsTitle,
+		nameLabel,
+		u.settingsName,
+		webhookLabel,
+		u.settingsWebhook,
+		saveSettings,
+	))
+	u.settings.Resize(fyne.NewSize(520, 240))
+	u.settings.SetCloseIntercept(func() { u.settings.Hide() })
 	return u
 }
 
@@ -92,17 +93,24 @@ func (u *UI) Prompt(title, body string) {
 	})
 }
 
-// ShowForm opens a one-off input window (its own callback), separate from the
-// status-update window so its submission is not logged as an update. Used for
-// the runtime webhook editor.
-func (u *UI) ShowForm(title, prompt, initial string, onSubmit func(string)) {
+// ShowSettings opens a reusable settings window for the runtime worker name and
+// webhook URL.
+func (u *UI) ShowSettings(name, webhook string, onSubmit func(name, webhook string)) {
 	fyne.Do(func() {
-		u.form.SetTitle("Session Agent Settings")
-		u.formBody.SetText(title + "\n\n" + prompt)
-		u.formEntry.SetText(initial)
-		u.formSubmit = onSubmit
-		u.form.Show()
-		u.form.RequestFocus()
+		u.settingsName.SetText(name)
+		u.settingsWebhook.SetText(webhook)
+		for _, obj := range u.settings.Content().(*fyne.Container).Objects {
+			if btn, ok := obj.(*widget.Button); ok {
+				btn.OnTapped = func() {
+					u.settings.Hide()
+					if onSubmit != nil {
+						onSubmit(u.settingsName.Text, u.settingsWebhook.Text)
+					}
+				}
+			}
+		}
+		u.settings.Show()
+		u.settings.RequestFocus()
 	})
 }
 

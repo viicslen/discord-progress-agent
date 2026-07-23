@@ -69,8 +69,7 @@ nix develop
 ### Tray actions
 
 - `Add update…`
-- `Change webhook…`
-- `Change name…`
+- `Settings…`
 - `Start break`
 - `End break`
 - `Start session`

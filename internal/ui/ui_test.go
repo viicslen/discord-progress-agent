@@ -19,30 +19,30 @@ func TestPromptUsesStableWindowTitle(t *testing.T) {
 	}
 }
 
-func TestShowFormReusesStableWindowTitle(t *testing.T) {
+func TestShowSettingsUsesStableWindowTitle(t *testing.T) {
 	a := test.NewApp()
 	u := New(a, nil)
 
-	u.ShowForm("Change webhook", "New Discord webhook URL:", "https://initial", nil)
-	if got := u.form.Title(); got != "Session Agent Settings" {
-		t.Fatalf("form window title = %q, want %q", got, "Session Agent Settings")
+	u.ShowSettings("alice", "https://initial", nil)
+	if got := u.settings.Title(); got != "Session Agent Settings" {
+		t.Fatalf("settings window title = %q, want %q", got, "Session Agent Settings")
 	}
-	if got := u.formBody.Text; got != "Change webhook\n\nNew Discord webhook URL:" {
-		t.Fatalf("form body = %q", got)
+	if got := u.settingsName.Text; got != "alice" {
+		t.Fatalf("settings name = %q", got)
 	}
-	if got := u.formEntry.Text; got != "https://initial" {
-		t.Fatalf("form entry = %q", got)
+	if got := u.settingsWebhook.Text; got != "https://initial" {
+		t.Fatalf("settings webhook = %q", got)
 	}
 
-	first := u.form
-	u.ShowForm("Change name", "Worker name shown in Discord:", "alice", nil)
-	if u.form != first {
-		t.Fatal("ShowForm should reuse the same window")
+	first := u.settings
+	u.ShowSettings("bob", "https://next", nil)
+	if u.settings != first {
+		t.Fatal("ShowSettings should reuse the same window")
 	}
-	if got := u.formBody.Text; got != "Change name\n\nWorker name shown in Discord:" {
-		t.Fatalf("form body after reuse = %q", got)
+	if got := u.settingsName.Text; got != "bob" {
+		t.Fatalf("settings name after reuse = %q", got)
 	}
-	if got := u.formEntry.Text; got != "alice" {
-		t.Fatalf("form entry after reuse = %q", got)
+	if got := u.settingsWebhook.Text; got != "https://next" {
+		t.Fatalf("settings webhook after reuse = %q", got)
 	}
 }
