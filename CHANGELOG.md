@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.0](https://github.com/viicslen/discord-progress-agent/compare/v0.5.1...v0.6.0) (2026-07-23)
+
+
+### Features
+
+* prompt and screenshot immediately when a session starts ([d13c430](https://github.com/viicslen/discord-progress-agent/commit/d13c4301551c11b5a57377c21f0862f16254de84))
+* take a final screenshot when a session ends ([46da751](https://github.com/viicslen/discord-progress-agent/commit/46da751025a5a65992d12831f93764c3091acc81))
+
+
+### Bug Fixes
+
+* clear break state when a session finalizes ([5d5fb57](https://github.com/viicslen/discord-progress-agent/commit/5d5fb57769dada333880d984e79022f3e1b4cea9))
+
 ## [0.5.1](https://github.com/viicslen/discord-progress-agent/compare/v0.5.0...v0.5.1) (2026-07-23)
 
 
