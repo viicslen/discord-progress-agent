@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Supersede an in-flight run when a PR gets another push; never cancel main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Fast job: gofmt + vet + race tests on the CORE packages only. These have no
   # Fyne/CGO dependency, so nothing heavy is compiled and no apt install is
@@ -13,6 +18,9 @@ jobs:
   lint-test:
     name: Lint & core tests
     runs-on: ubuntu-latest
+    # release-please's own PR only bumps CHANGELOG/version — the post-merge run
+    # on main covers it.
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     env:
       CORE: >-
         ./internal/vault/... ./internal/state/... ./internal/queue/...
@@ -45,6 +53,7 @@ jobs:
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    if: ${{ !startsWith(github.head_ref, 'release-please--') }}
     strategy:
       fail-fast: false
       matrix:
