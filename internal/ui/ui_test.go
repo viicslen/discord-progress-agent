@@ -3,6 +3,8 @@ package ui
 import (
 	"testing"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/test"
 )
 
@@ -44,5 +46,55 @@ func TestShowSettingsUsesStableWindowTitle(t *testing.T) {
 	}
 	if got := u.settingsWebhook.Text; got != "https://next" {
 		t.Fatalf("settings webhook after reuse = %q", got)
+	}
+}
+
+func TestCtrlEnterSubmitsUpdate(t *testing.T) {
+	a := test.NewApp()
+	got := make(chan string, 1)
+	u := New(a, func(s string) { got <- s })
+
+	u.entry.SetText("working on the thing")
+	u.entry.TypedShortcut(&desktop.CustomShortcut{
+		KeyName:  fyne.KeyReturn,
+		Modifier: fyne.KeyModifierControl,
+	})
+
+	select {
+	case s := <-got:
+		if s != "working on the thing" {
+			t.Fatalf("submitted %q", s)
+		}
+	default:
+		t.Fatal("ctrl+enter did not submit")
+	}
+	if u.entry.Text != "" {
+		t.Fatalf("entry not cleared: %q", u.entry.Text)
+	}
+}
+
+func TestSubmitDismissesNotifications(t *testing.T) {
+	sendFn, closeFn := sendNotification, closeNotification
+	defer func() { sendNotification, closeNotification = sendFn, closeFn }()
+
+	var next uint32
+	sendNotification = func(fyne.App, string, string) uint32 { next++; return next }
+	var closed []uint32
+	closeNotification = func(_ fyne.App, id uint32) { closed = append(closed, id) }
+
+	u := New(test.NewApp(), func(string) {})
+	u.Notify("Check-in", "body")
+	u.Notify("Check-in warning", "body")
+
+	u.entry.TypedShortcut(&desktop.CustomShortcut{
+		KeyName:  fyne.KeyReturn,
+		Modifier: fyne.KeyModifierControl,
+	})
+
+	if len(closed) != 2 || closed[0] != 1 || closed[1] != 2 {
+		t.Fatalf("closed = %v, want [1 2]", closed)
+	}
+	if len(u.open) != 0 {
+		t.Fatalf("open notifications left: %v", u.open)
 	}
 }
