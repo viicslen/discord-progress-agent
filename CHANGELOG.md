@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/viicslen/discord-progress-agent/compare/v0.6.0...v0.7.0) (2026-09-08)
+
+
+### Features
+
+* submit update on Ctrl+Enter and dismiss its notification ([8d537bc](https://github.com/viicslen/discord-progress-agent/commit/8d537bc647d301c1f4029418ebc8ba2794dfffb2))
+* submit update on Ctrl+Enter and dismiss its notification ([#14](https://github.com/viicslen/discord-progress-agent/issues/14)) ([5ec5f52](https://github.com/viicslen/discord-progress-agent/commit/5ec5f52e7bb0a865ae15a13cd2a93b7d5d426130))
+
 ## [0.6.0](https://github.com/viicslen/discord-progress-agent/compare/v0.5.1...v0.6.0) (2026-07-23)
 
 
