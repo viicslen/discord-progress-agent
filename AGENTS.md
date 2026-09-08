@@ -102,6 +102,14 @@ These packages have no Fyne/CGO dependency and are the fast inner loop:
   (`capture_linux.go`, `godbus/dbus/v5`), X11 and macOS/Windows use kbinani
   (`capture.go` / `capture_other.go`). Keep the D-Bus/portal code behind the
   `//go:build linux` tag so non-Linux builds don't pull it in.
+- **Notifications are dismissable on Linux (`internal/ui`).** `UI.Notify` posts
+  through the freedesktop D-Bus service itself (`notify_linux.go`) because
+  `fyne.App.SendNotification` discards the server id; the ids are kept so
+  submitting an update closes the still-open notifications. Other platforms fall
+  back to Fyne and cannot dismiss (`notify_other.go`).
+- **The input window submits on Ctrl+Enter.** `submitEntry` intercepts the
+  shortcut on the entry itself — Fyne gives shortcuts to the focused widget and
+  `widget.Entry` swallows unknown ones, so a canvas shortcut would never fire.
 - **The engine is UI- and side-effect-free.** `internal/session` must NOT import
   Fyne, `capture`, or `github`. The UI (`session.UI` interface) and screenshots/
   commits are injected as hooks (`Config.CaptureFn`, `Config.CommitsFn`). This is

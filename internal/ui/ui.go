@@ -5,9 +5,11 @@ package ui
 
 import (
 	"fmt"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -21,15 +23,46 @@ While a session is active it will:
 Screenshots pause while you are on a break. Nothing is captured or sent unless
 you agree below. If you do not consent, the app will close and record nothing.`
 
+// submitEntry is a multi-line entry that submits on Ctrl+Enter. Fyne routes
+// shortcuts to the focused widget first, and Entry swallows the ones it does not
+// know, so this has to be intercepted here rather than on the window canvas.
+type submitEntry struct {
+	widget.Entry
+	onCtrlEnter func()
+}
+
+func newSubmitEntry(onCtrlEnter func()) *submitEntry {
+	e := &submitEntry{onCtrlEnter: onCtrlEnter}
+	e.MultiLine = true
+	e.Wrapping = fyne.TextWrapWord
+	e.ExtendBaseWidget(e)
+	return e
+}
+
+func (e *submitEntry) TypedShortcut(s fyne.Shortcut) {
+	if cs, ok := s.(*desktop.CustomShortcut); ok &&
+		cs.Modifier == fyne.KeyModifierControl &&
+		(cs.KeyName == fyne.KeyReturn || cs.KeyName == fyne.KeyEnter) {
+		if e.onCtrlEnter != nil {
+			e.onCtrlEnter()
+		}
+		return
+	}
+	e.Entry.TypedShortcut(s)
+}
+
 type UI struct {
 	App             fyne.App
 	input           fyne.Window
-	entry           *widget.Entry
+	entry           *submitEntry
 	prompt          *widget.Label
 	settings        fyne.Window
 	settingsName    *widget.Entry
 	settingsWebhook *widget.Entry
 	onSubmit        func(string)
+
+	mu   sync.Mutex
+	open []uint32 // ids of OS notifications not yet dismissed
 }
 
 // New builds the UI and its (hidden) input window. onSubmit is invoked with the
@@ -37,20 +70,22 @@ type UI struct {
 func New(app fyne.App, onSubmit func(string)) *UI {
 	u := &UI{App: app, onSubmit: onSubmit}
 
-	u.entry = widget.NewMultiLineEntry()
-	u.entry.SetPlaceHolder("What are you working on?")
 	u.prompt = widget.NewLabel("")
 	u.prompt.Wrapping = fyne.TextWrapWord
 
 	w := app.NewWindow("Session Agent")
-	send := widget.NewButton("Send", func() {
+	submit := func() {
 		text := u.entry.Text
 		u.entry.SetText("")
 		w.Hide()
+		u.dismissNotifications()
 		if u.onSubmit != nil {
 			u.onSubmit(text)
 		}
-	})
+	}
+	u.entry = newSubmitEntry(submit)
+	u.entry.SetPlaceHolder("What are you working on?")
+	send := widget.NewButton("Send (Ctrl+Enter)", submit)
 	w.SetContent(container.NewBorder(u.prompt, send, nil, nil, u.entry))
 	w.Resize(fyne.NewSize(420, 220))
 	w.SetCloseIntercept(func() { w.Hide() }) // closing hides, never quits
@@ -78,9 +113,28 @@ func New(app fyne.App, onSubmit func(string)) *UI {
 	return u
 }
 
-// Notify sends a native OS notification (safe from any goroutine).
+// Notify sends a native OS notification (safe from any goroutine) and remembers
+// it so it can be dismissed once the worker answers.
 func (u *UI) Notify(title, body string) {
-	u.App.SendNotification(fyne.NewNotification(title, body))
+	id := sendNotification(u.App, title, body)
+	if id == 0 {
+		return
+	}
+	u.mu.Lock()
+	u.open = append(u.open, id)
+	u.mu.Unlock()
+}
+
+// dismissNotifications closes the notifications still on screen. Closing an
+// already-dismissed id is a no-op on the bus.
+func (u *UI) dismissNotifications() {
+	u.mu.Lock()
+	ids := u.open
+	u.open = nil
+	u.mu.Unlock()
+	for _, id := range ids {
+		closeNotification(u.App, id)
+	}
 }
 
 // Prompt raises the input window with the given prompt text.
